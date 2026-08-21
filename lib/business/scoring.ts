@@ -1,5 +1,4 @@
 import type { Tier } from "@/lib/finance/types";
-import { monthOfWeek } from "./week";
 import {
   contactsSuggestion,
   followUpsSuggestion,
@@ -9,14 +8,7 @@ import {
   registrationSuggestion,
   ratioHealthSuggestion,
 } from "./suggestions";
-import type {
-  BusinessCategoryBreakdown,
-  BusinessMonthEntry,
-  BusinessScore,
-  BusinessWeekEntry,
-  ContactsGap,
-  RegistrationPacing,
-} from "./types";
+import type { BusinessCategoryBreakdown, BusinessScore, BusinessWeekEntry, ContactsGap, RegistrationPacing } from "./types";
 
 /** Weight per category (sums to 100). Contacts/Business Registrations share the top
  * tier weight; Quality Invites/Customer Registrations share the mid tier weight;
@@ -51,7 +43,7 @@ export function midLowerTier(n: number): Tier {
   return "red";
 }
 
-/** Monthly, not weekly. No yellow tier. */
+/** Evaluated on the monthly sum of a weekly-logged field. No yellow tier. */
 export function registrationTier(n: number): Tier {
   if (n >= 5) return "gold";
   if (n >= 1) return "green";
@@ -76,6 +68,10 @@ function rollupWeeklyCategory(weeks: BusinessWeekEntry[], field: keyof BusinessW
   const fraction = fractions.reduce((a, b) => a + b, 0) / fractions.length;
   const avgPerWeek = values.reduce((a, b) => a + b, 0) / values.length;
   return { fraction, avgPerWeek, weeksCount: weeks.length, tier: blendedTierLabel(fraction, weeks.length) };
+}
+
+function sumField(weeks: BusinessWeekEntry[], field: keyof BusinessWeekEntry): number {
+  return weeks.reduce((sum, w) => sum + Number(w[field]), 0);
 }
 
 function pacingExpectedFraction(day: number, daysInMonth: number, graceDays = 5): number {
@@ -106,20 +102,13 @@ function computeRegistrationPacing(month: string, registrationsSoFar: number, no
 
 /**
  * Contacts needed to reach the next registration, using a trailing-8-week contacts:registration
- * ratio. The ratio is capped at the baseline (15:1) — a hard floor so a slump never makes the
- * ask stricter than baseline, while a hot streak (a better, lower ratio) is reflected fairly.
+ * ratio — both sums come straight off the same 8 weekly entries. The ratio is capped at the
+ * baseline (15:1) — a hard floor so a slump never makes the ask stricter than baseline, while a
+ * hot streak (a better, lower ratio) is reflected fairly.
  */
-function computeContactsGap(
-  registrationsThisMonth: number,
-  contactsLoggedThisMonth: number,
-  trailingWeeks: BusinessWeekEntry[],
-  trailingMonthEntries: BusinessMonthEntry[],
-): ContactsGap {
-  const trailingContacts = trailingWeeks.reduce((sum, w) => sum + w.contacts, 0);
-  const monthsSpanned = new Set(trailingWeeks.map((w) => monthOfWeek(w.week)));
-  const trailingRegistrations = trailingMonthEntries
-    .filter((m) => monthsSpanned.has(m.month))
-    .reduce((sum, m) => sum + m.business_registrations, 0);
+function computeContactsGap(registrationsThisMonth: number, contactsLoggedThisMonth: number, trailingWeeks: BusinessWeekEntry[]): ContactsGap {
+  const trailingContacts = sumField(trailingWeeks, "contacts");
+  const trailingRegistrations = sumField(trailingWeeks, "business_registrations");
 
   const trailingRatio = trailingRegistrations > 0 ? trailingContacts / trailingRegistrations : null;
   const effectiveRatio = trailingRatio !== null ? Math.min(trailingRatio, BASELINE_CONTACTS_PER_REGISTRATION) : BASELINE_CONTACTS_PER_REGISTRATION;
@@ -131,15 +120,8 @@ function computeContactsGap(
   return { contactsNeeded, effectiveRatio, nextRegistrationTarget, contactsLoggedThisMonth };
 }
 
-export function computeBusinessScore(args: {
-  month: string;
-  weeksInMonth: BusinessWeekEntry[];
-  registrationEntry: BusinessMonthEntry | null;
-  trailingWeeks: BusinessWeekEntry[];
-  trailingMonthEntries: BusinessMonthEntry[];
-  now?: Date;
-}): BusinessScore {
-  const { month, weeksInMonth, registrationEntry, trailingWeeks, trailingMonthEntries, now = new Date() } = args;
+export function computeBusinessScore(args: { month: string; weeksInMonth: BusinessWeekEntry[]; trailingWeeks: BusinessWeekEntry[]; now?: Date }): BusinessScore {
+  const { month, weeksInMonth, trailingWeeks, now = new Date() } = args;
 
   const contacts = rollupWeeklyCategory(weeksInMonth, "contacts", contactsTier);
   const qi = rollupWeeklyCategory(weeksInMonth, "quality_invites", midLowerTier);
@@ -147,7 +129,7 @@ export function computeBusinessScore(args: {
   const plans = rollupWeeklyCategory(weeksInMonth, "plans", midLowerTier);
   const followUps = rollupWeeklyCategory(weeksInMonth, "follow_ups", midLowerTier);
 
-  const registrationsThisMonth = registrationEntry?.business_registrations ?? 0;
+  const registrationsThisMonth = sumField(weeksInMonth, "business_registrations");
   const regTier = registrationTier(registrationsThisMonth);
 
   const categories: BusinessCategoryBreakdown[] = [
@@ -216,13 +198,12 @@ export function computeBusinessScore(args: {
   const totalScore = Math.round(categories.reduce((sum, c) => sum + c.pointsEarned, 0));
 
   const pacing = computeRegistrationPacing(month, registrationsThisMonth, now);
-  const contactsLoggedThisMonth = weeksInMonth.reduce((sum, w) => sum + w.contacts, 0);
-  const gap = computeContactsGap(registrationsThisMonth, contactsLoggedThisMonth, trailingWeeks, trailingMonthEntries);
+  const contactsLoggedThisMonth = sumField(weeksInMonth, "contacts");
+  const gap = computeContactsGap(registrationsThisMonth, contactsLoggedThisMonth, trailingWeeks);
 
-  const trailingContacts = trailingWeeks.reduce((sum, w) => sum + w.contacts, 0);
-  const trailingQi = trailingWeeks.reduce((sum, w) => sum + w.quality_invites, 0);
-  const monthsSpanned = new Set(trailingWeeks.map((w) => monthOfWeek(w.week)));
-  const trailingRegs = trailingMonthEntries.filter((m) => monthsSpanned.has(m.month)).reduce((s, m) => s + m.business_registrations, 0);
+  const trailingContacts = sumField(trailingWeeks, "contacts");
+  const trailingQi = sumField(trailingWeeks, "quality_invites");
+  const trailingRegs = sumField(trailingWeeks, "business_registrations");
 
   const suggestions = [
     ...categories.map((c) => c.suggestion).filter((s): s is string => !!s),

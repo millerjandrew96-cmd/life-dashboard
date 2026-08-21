@@ -1,6 +1,10 @@
 import type { Tier } from "@/lib/finance/types";
 
-/** One week of manually-entered funnel activity. `week` is the primary key, ISO format "YYYY-Www". */
+/**
+ * One week of manually-entered funnel activity. `week` is the primary key, ISO format "YYYY-Www".
+ * Business registrations are logged weekly like everything else; the dashboard displays them
+ * summed to a monthly figure (and the tier is evaluated on that monthly sum) per the spec.
+ */
 export interface BusinessWeekEntry {
   week: string;
   contacts: number;
@@ -8,21 +12,12 @@ export interface BusinessWeekEntry {
   customer_registrations: number;
   plans: number;
   follow_ups: number;
-  notes: string | null;
-  updated_at?: string;
-}
-
-export type BusinessWeekEntryInput = Omit<BusinessWeekEntry, "updated_at">;
-
-/** Business registrations are tracked monthly, not weekly, per the spec. */
-export interface BusinessMonthEntry {
-  month: string;
   business_registrations: number;
   notes: string | null;
   updated_at?: string;
 }
 
-export type BusinessMonthEntryInput = Omit<BusinessMonthEntry, "updated_at">;
+export type BusinessWeekEntryInput = Omit<BusinessWeekEntry, "updated_at">;
 
 export interface BusinessCategoryBreakdown {
   key: string;

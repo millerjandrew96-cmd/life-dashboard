@@ -36,6 +36,10 @@ create trigger finance_entries_set_updated_at
   for each row execute function set_updated_at();
 
 -- Life Dashboard — Business pillar schema
+--
+-- Everything is logged weekly, including business registrations — the dashboard displays
+-- registrations summed to a monthly figure, but the underlying data (and the rolling 8-week
+-- contacts:registration / QI:registration ratios) all live at weekly grain.
 
 create table if not exists business_week_entries (
   week text primary key check (week ~ '^\d{4}-W(0[1-9]|[1-4]\d|5[0-3])$'),
@@ -44,6 +48,7 @@ create table if not exists business_week_entries (
   customer_registrations integer not null default 0,
   plans integer not null default 0,
   follow_ups integer not null default 0,
+  business_registrations integer not null default 0,
   notes text,
   updated_at timestamptz not null default now()
 );
@@ -53,19 +58,4 @@ alter table business_week_entries enable row level security;
 drop trigger if exists business_week_entries_set_updated_at on business_week_entries;
 create trigger business_week_entries_set_updated_at
   before update on business_week_entries
-  for each row execute function set_updated_at();
-
--- Business registrations are tracked monthly, not weekly, per the spec.
-create table if not exists business_month_entries (
-  month text primary key check (month ~ '^\d{4}-(0[1-9]|1[0-2])$'),
-  business_registrations integer not null default 0,
-  notes text,
-  updated_at timestamptz not null default now()
-);
-
-alter table business_month_entries enable row level security;
-
-drop trigger if exists business_month_entries_set_updated_at on business_month_entries;
-create trigger business_month_entries_set_updated_at
-  before update on business_month_entries
   for each row execute function set_updated_at();

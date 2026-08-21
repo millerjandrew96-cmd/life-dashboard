@@ -9,9 +9,9 @@ import { TierBadge } from "@/components/TierBadge";
 import { formatMonthLabel } from "@/lib/finance/month";
 import { currentWeekKey, mondayDateString, monthOfWeek, weekKeyFromDateString, weekLabel } from "@/lib/business/week";
 import type { BusinessChatParseResult, WeeklyField } from "@/lib/business/parseChat";
-import type { BusinessMonthEntry, BusinessScore, BusinessWeekEntry } from "@/lib/business/types";
+import type { BusinessScore, BusinessWeekEntry } from "@/lib/business/types";
 
-const WEEKLY_NUM_FIELDS = ["contacts", "quality_invites", "customer_registrations", "plans", "follow_ups"] as const;
+const WEEKLY_NUM_FIELDS = ["contacts", "quality_invites", "customer_registrations", "plans", "follow_ups", "business_registrations"] as const;
 type WeeklyNumField = (typeof WEEKLY_NUM_FIELDS)[number];
 
 const WEEKLY_FIELD_LABELS: Record<WeeklyNumField, string> = {
@@ -20,6 +20,7 @@ const WEEKLY_FIELD_LABELS: Record<WeeklyNumField, string> = {
   customer_registrations: "Customer registrations",
   plans: "Plans",
   follow_ups: "Follow ups",
+  business_registrations: "Business registrations",
 };
 
 type WeekFormState = Record<WeeklyNumField, string> & { week: string; notes: string };
@@ -33,12 +34,10 @@ export function BusinessDashboard({
   selectedMonth,
   score,
   weekEntries,
-  monthEntries,
 }: {
   selectedMonth: string;
   score: BusinessScore | null;
   weekEntries: BusinessWeekEntry[];
-  monthEntries: BusinessMonthEntry[];
 }) {
   const router = useRouter();
 
@@ -49,22 +48,25 @@ export function BusinessDashboard({
   const [weekSaving, setWeekSaving] = useState(false);
   const [weekError, setWeekError] = useState<string | null>(null);
 
-  const currentRegistrationEntry = monthEntries.find((m) => m.month === selectedMonth) ?? null;
-  const [regValue, setRegValue] = useState(String(currentRegistrationEntry?.business_registrations ?? 0));
-  const [regNotes, setRegNotes] = useState(currentRegistrationEntry?.notes ?? "");
-  const [regSaving, setRegSaving] = useState(false);
-  const [regError, setRegError] = useState<string | null>(null);
-
   const [chatMessage, setChatMessage] = useState("");
   const [chatResult, setChatResult] = useState<BusinessChatParseResult | null>(null);
   const [chatLoading, setChatLoading] = useState(false);
 
   const sortedWeeks = useMemo(() => [...weekEntries].sort((a, b) => b.week.localeCompare(a.week)), [weekEntries]);
-  const sortedMonths = useMemo(() => [...monthEntries].sort((a, b) => b.month.localeCompare(a.month)), [monthEntries]);
+
+  const registrationsByMonth = useMemo(() => {
+    const totals = new Map<string, number>();
+    for (const w of weekEntries) {
+      const month = monthOfWeek(w.week);
+      totals.set(month, (totals.get(month) ?? 0) + w.business_registrations);
+    }
+    return [...totals.entries()].sort((a, b) => b[0].localeCompare(a[0]));
+  }, [weekEntries]);
+
   const allMonths = useMemo(() => {
-    const set = new Set<string>([...weekEntries.map((w) => monthOfWeek(w.week)), ...monthEntries.map((m) => m.month)]);
+    const set = new Set(weekEntries.map((w) => monthOfWeek(w.week)));
     return [...set].sort().reverse();
-  }, [weekEntries, monthEntries]);
+  }, [weekEntries]);
 
   function loadWeekIntoForm(week: string) {
     const existing = weekEntries.find((w) => w.week === week) ?? null;
@@ -99,28 +101,6 @@ export function BusinessDashboard({
     }
   }
 
-  async function handleRegistrationSave(e: React.FormEvent) {
-    e.preventDefault();
-    setRegSaving(true);
-    setRegError(null);
-    try {
-      const res = await fetch("/api/business/month-entries", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ month: selectedMonth, business_registrations: Number(regValue) || 0, notes: regNotes }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error ?? "Failed to save.");
-      }
-      router.refresh();
-    } catch (err) {
-      setRegError(err instanceof Error ? err.message : "Failed to save.");
-    } finally {
-      setRegSaving(false);
-    }
-  }
-
   async function handleParseChat() {
     if (!chatMessage.trim()) return;
     setChatLoading(true);
@@ -138,18 +118,13 @@ export function BusinessDashboard({
 
   function applyChatPatch() {
     if (!chatResult) return;
-    if (Object.keys(chatResult.weekly).length > 0) {
-      setWeekForm((f) => {
-        const next = { ...f };
-        for (const [key, value] of Object.entries(chatResult.weekly) as [WeeklyField, number][]) {
-          next[key] = String(value);
-        }
-        return next;
-      });
-    }
-    if (chatResult.monthly.business_registrations !== undefined) {
-      setRegValue(String(chatResult.monthly.business_registrations));
-    }
+    setWeekForm((f) => {
+      const next = { ...f };
+      for (const [key, value] of Object.entries(chatResult.patch) as [WeeklyField, number][]) {
+        next[key] = String(value);
+      }
+      return next;
+    });
     setChatResult(null);
     setChatMessage("");
   }
@@ -226,14 +201,14 @@ export function BusinessDashboard({
           )}
         </>
       ) : (
-        <p className="mb-8 text-sm text-black/60 dark:text-white/60">No entries logged yet for this month — log a week or registrations below.</p>
+        <p className="mb-8 text-sm text-black/60 dark:text-white/60">No entries logged yet for this month — log a week below.</p>
       )}
 
       <section className="mb-8">
         <h2 className="mb-3 text-lg font-semibold">Log with chat</h2>
         <p className="mb-2 text-xs text-black/50 dark:text-white/50">
-          e.g. &ldquo;did 6 contacts and 2 QIs this week, 3 plans, 1 follow up&rdquo; or &ldquo;2 business registrations this
-          month&rdquo;. Review before applying — this is a simple keyword parser, not AI.
+          e.g. &ldquo;did 6 contacts and 2 QIs this week, 3 plans, 1 follow up, 1 business registration&rdquo;. Review before
+          applying — this is a simple keyword parser, not AI.
         </p>
         <div className="flex gap-2">
           <input
@@ -259,12 +234,10 @@ export function BusinessDashboard({
             ) : (
               <>
                 <ul className="mb-3 space-y-1">
-                  {Object.entries({ ...chatResult.weekly, ...chatResult.monthly }).map(([field, value]) => (
+                  {(Object.entries(chatResult.patch) as [WeeklyField, number][]).map(([field, value]) => (
                     <li key={field}>
                       <span className="font-medium">{field}</span>: {value}{" "}
-                      <span className="text-black/40 dark:text-white/40">
-                        (&ldquo;{chatResult.matchedText[field as keyof typeof chatResult.matchedText]}&rdquo;)
-                      </span>
+                      <span className="text-black/40 dark:text-white/40">(&ldquo;{chatResult.matchedText[field]}&rdquo;)</span>
                     </li>
                   ))}
                 </ul>
@@ -273,47 +246,12 @@ export function BusinessDashboard({
                   onClick={applyChatPatch}
                   className="rounded-lg border border-black/20 px-3 py-1.5 text-xs font-medium dark:border-white/20"
                 >
-                  Apply to forms below
+                  Apply to form below
                 </button>
               </>
             )}
           </div>
         )}
-      </section>
-
-      <section className="mb-8">
-        <h2 className="mb-3 text-lg font-semibold">Log business registrations — {formatMonthLabel(selectedMonth)}</h2>
-        <p className="mb-2 text-xs text-black/50 dark:text-white/50">Tracked monthly, not weekly.</p>
-        <form onSubmit={handleRegistrationSave} className="flex flex-wrap items-end gap-3">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-black/60 dark:text-white/60">Registrations this month</label>
-            <input
-              type="number"
-              min={0}
-              step="1"
-              value={regValue}
-              onChange={(e) => setRegValue(e.target.value)}
-              className="w-32 rounded-lg border border-black/15 bg-transparent px-3 py-2 text-sm dark:border-white/15"
-            />
-          </div>
-          <div className="flex-1 min-w-[12rem]">
-            <label className="mb-1 block text-xs font-medium text-black/60 dark:text-white/60">Notes</label>
-            <input
-              type="text"
-              value={regNotes}
-              onChange={(e) => setRegNotes(e.target.value)}
-              className="w-full rounded-lg border border-black/15 bg-transparent px-3 py-2 text-sm dark:border-white/15"
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={regSaving}
-            className="rounded-lg bg-black px-5 py-2.5 text-sm font-medium text-white disabled:opacity-40 dark:bg-white dark:text-black"
-          >
-            {regSaving ? "Saving…" : "Save"}
-          </button>
-        </form>
-        {regError && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{regError}</p>}
       </section>
 
       <section className="mb-8">
@@ -381,6 +319,7 @@ export function BusinessDashboard({
                   <th className="px-3 py-2 text-right font-medium">Cust. Regs</th>
                   <th className="px-3 py-2 text-right font-medium">Plans</th>
                   <th className="px-3 py-2 text-right font-medium">Follow Ups</th>
+                  <th className="px-3 py-2 text-right font-medium">Registrations</th>
                   <th className="px-3 py-2" />
                 </tr>
               </thead>
@@ -393,6 +332,7 @@ export function BusinessDashboard({
                     <td className="px-3 py-2 text-right">{w.customer_registrations}</td>
                     <td className="px-3 py-2 text-right">{w.plans}</td>
                     <td className="px-3 py-2 text-right">{w.follow_ups}</td>
+                    <td className="px-3 py-2 text-right">{w.business_registrations}</td>
                     <td className="px-3 py-2 text-right">
                       <button type="button" onClick={() => loadWeekIntoForm(w.week)} className="text-xs underline underline-offset-2">
                         Edit
@@ -406,14 +346,15 @@ export function BusinessDashboard({
         </section>
       )}
 
-      {sortedMonths.length > 0 && (
+      {registrationsByMonth.length > 0 && (
         <section className="mb-8">
           <h2 className="mb-3 text-lg font-semibold">Registrations by month</h2>
+          <p className="mb-2 text-xs text-black/50 dark:text-white/50">Summed from the weekly log above.</p>
           <ul className="divide-y divide-black/10 rounded-xl border border-black/10 dark:divide-white/10 dark:border-white/10">
-            {sortedMonths.map((m) => (
-              <li key={m.month} className="flex items-center justify-between px-4 py-2 text-sm">
-                <span>{formatMonthLabel(m.month)}</span>
-                <span className="font-semibold">{m.business_registrations}</span>
+            {registrationsByMonth.map(([month, total]) => (
+              <li key={month} className="flex items-center justify-between px-4 py-2 text-sm">
+                <span>{formatMonthLabel(month)}</span>
+                <span className="font-semibold">{total}</span>
               </li>
             ))}
           </ul>

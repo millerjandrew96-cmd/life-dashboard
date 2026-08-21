@@ -69,37 +69,43 @@ maxed out generate an "areas to improve" suggestion.
 
 ## Business scoring
 
-Implemented in `lib/business/scoring.ts`. Two input cadences roll into one
-monthly score: funnel activity is logged **weekly** (`lib/business/types.ts`
-→ `BusinessWeekEntry`), while business registrations are logged **monthly**
-(`BusinessMonthEntry`), per the spec.
+Implemented in `lib/business/scoring.ts`. Everything is logged on one
+**weekly** cadence (`lib/business/types.ts` → `BusinessWeekEntry`) —
+including business registrations, which are logged per-week like the rest
+of the funnel but displayed on the dashboard as a monthly sum (and scored
+on that monthly sum), since that's the number that matters day to day.
 
 100 points total:
 
-| Category | Cadence | Weight | Tiers (weekly) |
-|---|---|---|---|
-| Contacts | weekly | 30 | red `0-1`, yellow `2-4`, green `5-7`, gold `8+` |
-| Business Registrations | monthly | 30 | red `0`, green `1-4`, gold `5+` (no yellow) |
-| Quality Invites / Overviews | weekly | 15 | red `0-1`, yellow `2`, green `3-4`, gold `5+` |
-| Customer Registrations | weekly | 15 | same tiers as Quality Invites |
-| Plans | weekly | 5 | same tiers as Quality Invites |
-| Follow Ups | weekly | 5 | same tiers as Quality Invites |
+| Category | Weight | Tiers |
+|---|---|---|
+| Contacts | 30 | red `0-1`, yellow `2-4`, green `5-7`, gold `8+` (weekly) |
+| Business Registrations | 30 | red `0`, green `1-4`, gold `5+` — no yellow (monthly sum of the weekly log) |
+| Quality Invites / Overviews | 15 | red `0-1`, yellow `2`, green `3-4`, gold `5+` (weekly) |
+| Customer Registrations | 15 | same tiers as Quality Invites (weekly) |
+| Plans | 5 | same tiers as Quality Invites (weekly) |
+| Follow Ups | 5 | same tiers as Quality Invites (weekly) |
 
-Each weekly category's monthly score is the average of its per-week tier
-across every week logged in that month (so a partially-logged in-progress
-month is scored fairly on what's been entered so far, not padded with
-zeros for missing weeks).
+For the five weekly-tiered categories, the monthly score is the average of
+each week's tier across every week logged in that month (so a
+partially-logged in-progress month is scored fairly on what's been entered
+so far, not padded with zeros for missing weeks). Business Registrations is
+different — its tier comes from the raw monthly *sum*, not an average,
+matching how the spec describes it ("0 red, 1-4 green, 5+ gold" reads as a
+total for the month).
 
 Two additional live indicators sit next to the hero score, per the spec:
 
 - **Registration pacing** — a soft-grace daily pacing curve (the first ~5
   days of the month don't get judged against a full month's target) projects
-  "on track for N registrations by month end."
+  "on track for N registrations by month end," using that same monthly sum.
 - **Contacts gap tile** (equal visual size to the score ring) — contacts
   still needed to reach the next registration, using the trailing 8-week
-  contacts-to-registration ratio, capped at the 15:1 baseline so a slump
-  never makes the ask stricter than baseline while a hot streak (a better
-  ratio) is reflected fairly. The same baseline logic (10:1) flags a
+  contacts-to-registration ratio (both sums come straight off the same 8
+  weekly entries — no cross-cadence conversion needed since registrations
+  are weekly data too), capped at the 15:1 baseline so a slump never makes
+  the ask stricter than baseline while a hot streak (a better ratio) is
+  reflected fairly. The same baseline logic (10:1) flags a
   Quality-Invite-to-registration ratio that's slipping, as a suggestion.
 
 ## Chat-style logging
@@ -107,11 +113,11 @@ Two additional live indicators sit next to the hero score, per the spec:
 Both pillars have a **Log with chat** box running a lightweight keyword/regex
 parser — not an LLM call — e.g. *"saved $1,200 this month, paid $450 on
 loans"* (`lib/finance/parseChat.ts`) or *"did 6 contacts and 2 QIs this
-week, 3 plans"* (`lib/business/parseChat.ts`). Both only ever propose a
-draft patch for you to review (with the exact snippet that matched each
-field) and apply to the form; neither saves data directly. A future version
-could swap either for an actual LLM-based parser without changing the API
-surface (`POST /api/finance/chat`, `POST /api/business/chat`).
+week, 3 plans, 1 business registration"* (`lib/business/parseChat.ts`). Both
+only ever propose a draft patch for you to review (with the exact snippet
+that matched each field) and apply to the form; neither saves data directly.
+A future version could swap either for an actual LLM-based parser without
+changing the API surface (`POST /api/finance/chat`, `POST /api/business/chat`).
 
 ## API
 
@@ -125,13 +131,10 @@ Finance:
 
 Business:
 - `GET /api/business/week-entries` — list all logged weeks
-- `POST /api/business/week-entries` — create or update a week's funnel activity
+- `POST /api/business/week-entries` — create or update a week's funnel activity (including that week's registrations)
 - `GET|DELETE /api/business/week-entries/[week]` — fetch/delete one week (ISO week key, e.g. `2026-W34`)
-- `GET /api/business/month-entries` — list all logged months' registrations
-- `POST /api/business/month-entries` — create or update a month's registration count
-- `GET|DELETE /api/business/month-entries/[month]` — fetch/delete one month
 - `GET /api/business/score?month=YYYY-MM` — computed score, pacing, and gap tile (defaults to the latest logged month)
-- `POST /api/business/chat` — parse a chat message into weekly + monthly draft patches
+- `POST /api/business/chat` — parse a chat message into a draft field patch
 
 ## Deploying
 

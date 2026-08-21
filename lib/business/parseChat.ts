@@ -1,34 +1,29 @@
-export type WeeklyField = "contacts" | "quality_invites" | "customer_registrations" | "plans" | "follow_ups";
-export type MonthlyField = "business_registrations";
-type Field = WeeklyField | MonthlyField;
+export type WeeklyField = "contacts" | "quality_invites" | "customer_registrations" | "plans" | "follow_ups" | "business_registrations";
 
 export interface BusinessChatParseResult {
-  weekly: Partial<Record<WeeklyField, number>>;
-  monthly: Partial<Record<MonthlyField, number>>;
-  matchedText: Partial<Record<Field, string>>;
+  patch: Partial<Record<WeeklyField, number>>;
+  matchedText: Partial<Record<WeeklyField, string>>;
   empty: boolean;
 }
 
 const NUM = String.raw`(\d+)`;
 
 interface FieldRule {
-  field: Field;
-  cadence: "weekly" | "monthly";
+  field: WeeklyField;
   patterns: RegExp[];
 }
 
 // Matches both orders — "6 contacts" and "contacts: 6" — since natural phrasing puts the
 // number first ("did 6 contacts and 2 QIs this week"). More specific phrasings (e.g.
-// "customer registrations") are listed before the generic "registrations" fallback.
+// "customer registrations") are listed before the generic "registrations" fallback so
+// "2 customer registrations, 1 business registration" disambiguates correctly.
 const RULES: FieldRule[] = [
   {
     field: "contacts",
-    cadence: "weekly",
     patterns: [new RegExp(String.raw`${NUM}\s*contacts?`, "i"), new RegExp(String.raw`contacts?\D{0,5}${NUM}`, "i")],
   },
   {
     field: "quality_invites",
-    cadence: "weekly",
     patterns: [
       new RegExp(String.raw`${NUM}\s*(?:qis?|quality invites?|overviews?)`, "i"),
       new RegExp(String.raw`(?:qis?|quality invites?|overviews?)\D{0,5}${NUM}`, "i"),
@@ -36,7 +31,6 @@ const RULES: FieldRule[] = [
   },
   {
     field: "customer_registrations",
-    cadence: "weekly",
     patterns: [
       new RegExp(String.raw`${NUM}\s*customer\s*(?:sign[\s-]?ups?|reg(?:istration)?s?)`, "i"),
       new RegExp(String.raw`customer\s*(?:sign[\s-]?ups?|reg(?:istration)?s?)\D{0,5}${NUM}`, "i"),
@@ -44,17 +38,14 @@ const RULES: FieldRule[] = [
   },
   {
     field: "plans",
-    cadence: "weekly",
     patterns: [new RegExp(String.raw`${NUM}\s*plans?`, "i"), new RegExp(String.raw`plans?\D{0,5}${NUM}`, "i")],
   },
   {
     field: "follow_ups",
-    cadence: "weekly",
     patterns: [new RegExp(String.raw`${NUM}\s*follow[\s-]?ups?`, "i"), new RegExp(String.raw`follow[\s-]?ups?\D{0,5}${NUM}`, "i")],
   },
   {
     field: "business_registrations",
-    cadence: "monthly",
     patterns: [
       new RegExp(String.raw`${NUM}\s*(?:business\s*reg(?:istration)?s?|new\s*(?:ibos?|business\s*builders?))`, "i"),
       new RegExp(String.raw`(?:business\s*reg(?:istration)?s?)\D{0,5}${NUM}`, "i"),
@@ -66,28 +57,24 @@ const RULES: FieldRule[] = [
 
 /**
  * Heuristic keyword/regex extraction — not an LLM call. Only ever proposes a draft for the
- * user to review and apply; never writes data directly. Splits results into a weekly-cadence
- * patch (funnel activity) and a monthly-cadence patch (business registrations) since they
- * save to different records.
+ * user to review and apply; never writes data directly. All fields are weekly (business
+ * registrations included — the monthly figure shown on the dashboard is a sum of weeks).
  */
 export function parseBusinessChat(message: string): BusinessChatParseResult {
-  const weekly: BusinessChatParseResult["weekly"] = {};
-  const monthly: BusinessChatParseResult["monthly"] = {};
+  const patch: BusinessChatParseResult["patch"] = {};
   const matchedText: BusinessChatParseResult["matchedText"] = {};
 
   for (const rule of RULES) {
-    if (matchedText[rule.field] !== undefined) continue;
+    if (patch[rule.field] !== undefined) continue;
     for (const pattern of rule.patterns) {
       const match = message.match(pattern);
       if (match) {
-        const value = Number(match[1]);
-        if (rule.cadence === "weekly") weekly[rule.field as WeeklyField] = value;
-        else monthly[rule.field as MonthlyField] = value;
+        patch[rule.field] = Number(match[1]);
         matchedText[rule.field] = match[0].trim();
         break;
       }
     }
   }
 
-  return { weekly, monthly, matchedText, empty: Object.keys(matchedText).length === 0 };
+  return { patch, matchedText, empty: Object.keys(patch).length === 0 };
 }

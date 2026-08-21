@@ -6,16 +6,8 @@ export default async function BusinessPage({ searchParams }: PageProps<"/busines
   const params = await searchParams;
   const requestedMonth = typeof params.month === "string" ? params.month : null;
 
-  const { month, score, weekEntries, monthEntries } = await getBusinessScoreForMonth(requestedMonth);
+  const { month, score, weekEntries } = await getBusinessScoreForMonth(requestedMonth);
   const selectedMonth = month ?? currentMonthKey();
 
-  return (
-    <BusinessDashboard
-      key={selectedMonth}
-      selectedMonth={selectedMonth}
-      score={score}
-      weekEntries={weekEntries}
-      monthEntries={monthEntries}
-    />
-  );
+  return <BusinessDashboard key={selectedMonth} selectedMonth={selectedMonth} score={score} weekEntries={weekEntries} />;
 }

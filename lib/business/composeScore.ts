@@ -1,32 +1,25 @@
 import { computeBusinessScore } from "./scoring";
-import { getBusinessMonthEntry, listBusinessMonthEntries, listBusinessWeekEntries } from "./store";
+import { listBusinessWeekEntries } from "./store";
 import { monthOfWeek } from "./week";
-import type { BusinessMonthEntry, BusinessScore, BusinessWeekEntry } from "./types";
+import type { BusinessScore, BusinessWeekEntry } from "./types";
 
 /** Shared by the score API route and the server-rendered page so the trailing-window logic lives in one place. */
 export async function getBusinessScoreForMonth(
   requestedMonth: string | null,
-): Promise<{ month: string | null; score: BusinessScore | null; weekEntries: BusinessWeekEntry[]; monthEntries: BusinessMonthEntry[] }> {
-  const [weekEntries, monthEntries] = await Promise.all([listBusinessWeekEntries(), listBusinessMonthEntries()]);
+): Promise<{ month: string | null; score: BusinessScore | null; weekEntries: BusinessWeekEntry[] }> {
+  const weekEntries = await listBusinessWeekEntries();
 
-  const month = requestedMonth ?? latestMonth(weekEntries.map((w) => monthOfWeek(w.week)).concat(monthEntries.map((m) => m.month)));
+  const month = requestedMonth ?? latestMonth(weekEntries.map((w) => monthOfWeek(w.week)));
   if (!month) {
-    return { month: null, score: null, weekEntries, monthEntries };
+    return { month: null, score: null, weekEntries };
   }
 
   const weeksInMonth = weekEntries.filter((w) => monthOfWeek(w.week) === month);
-  const registrationEntry = await getBusinessMonthEntry(month);
   const trailingWeeks = [...weekEntries].sort((a, b) => b.week.localeCompare(a.week)).slice(0, 8);
 
-  const score = computeBusinessScore({
-    month,
-    weeksInMonth,
-    registrationEntry,
-    trailingWeeks,
-    trailingMonthEntries: monthEntries,
-  });
+  const score = computeBusinessScore({ month, weeksInMonth, trailingWeeks });
 
-  return { month, score, weekEntries, monthEntries };
+  return { month, score, weekEntries };
 }
 
 function latestMonth(months: string[]): string | null {
