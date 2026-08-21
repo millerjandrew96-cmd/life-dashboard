@@ -2,8 +2,9 @@
 
 A gamified personal life dashboard. Four pillars — Finance, Business, Health,
 Relationships — each with a live score out of 100 and a fully transparent
-breakdown of how that score was earned. This build covers **Finance**; the
-other three pillars are scaffolded as "coming soon" tiles on the home screen.
+breakdown of how that score was earned. This build covers **Finance** and
+**Business**; Health and Relationships are scaffolded as "coming soon" tiles
+on the home screen.
 
 Stack: Next.js (App Router) + TypeScript + Tailwind CSS, deployed on Vercel,
 data in Supabase (Postgres).
@@ -20,16 +21,16 @@ Open http://localhost:3000. No setup is required to try it — see
 
 ## Data storage
 
-The app talks to a single `FinanceStore` abstraction (`lib/finance/store.ts`)
-with two backends:
+Each pillar has its own store module (`lib/finance/store.ts`,
+`lib/business/store.ts`) with two backends:
 
 - **Supabase** (production): used automatically when `SUPABASE_URL` and
   `SUPABASE_SERVICE_ROLE_KEY` are set. These are server-only env vars — the
   service role key is never exposed to the browser; all reads/writes go
   through Next.js Route Handlers.
 - **Local JSON file** (dev fallback): when those env vars are unset, entries
-  are read/written to `data/finance-entries.json` (gitignored). This lets you
-  run and demo the app immediately without a Supabase project.
+  are read/written to `data/*.json` (gitignored). This lets you run and demo
+  the app immediately without a Supabase project.
 
 ### Setting up Supabase for real
 
@@ -66,24 +67,71 @@ Every category on `/finance` shows its weight, the raw value that drove it,
 its tier, and the exact points earned — no black box. Categories that aren't
 maxed out generate an "areas to improve" suggestion.
 
+## Business scoring
+
+Implemented in `lib/business/scoring.ts`. Two input cadences roll into one
+monthly score: funnel activity is logged **weekly** (`lib/business/types.ts`
+→ `BusinessWeekEntry`), while business registrations are logged **monthly**
+(`BusinessMonthEntry`), per the spec.
+
+100 points total:
+
+| Category | Cadence | Weight | Tiers (weekly) |
+|---|---|---|---|
+| Contacts | weekly | 30 | red `0-1`, yellow `2-4`, green `5-7`, gold `8+` |
+| Business Registrations | monthly | 30 | red `0`, green `1-4`, gold `5+` (no yellow) |
+| Quality Invites / Overviews | weekly | 15 | red `0-1`, yellow `2`, green `3-4`, gold `5+` |
+| Customer Registrations | weekly | 15 | same tiers as Quality Invites |
+| Plans | weekly | 5 | same tiers as Quality Invites |
+| Follow Ups | weekly | 5 | same tiers as Quality Invites |
+
+Each weekly category's monthly score is the average of its per-week tier
+across every week logged in that month (so a partially-logged in-progress
+month is scored fairly on what's been entered so far, not padded with
+zeros for missing weeks).
+
+Two additional live indicators sit next to the hero score, per the spec:
+
+- **Registration pacing** — a soft-grace daily pacing curve (the first ~5
+  days of the month don't get judged against a full month's target) projects
+  "on track for N registrations by month end."
+- **Contacts gap tile** (equal visual size to the score ring) — contacts
+  still needed to reach the next registration, using the trailing 8-week
+  contacts-to-registration ratio, capped at the 15:1 baseline so a slump
+  never makes the ask stricter than baseline while a hot streak (a better
+  ratio) is reflected fairly. The same baseline logic (10:1) flags a
+  Quality-Invite-to-registration ratio that's slipping, as a suggestion.
+
 ## Chat-style logging
 
-The **Log with chat** box on `/finance` runs a lightweight keyword/regex
-parser (`lib/finance/parseChat.ts`) — not an LLM call — over phrases like
-*"saved $1,200 this month, paid $450 on loans, credit card is at $300"*. It
-only ever proposes a draft patch for you to review (with the exact snippet
-that matched each field) and apply to the form; it never saves data directly.
-A future version could swap this for an actual LLM-based parser without
-changing the API surface (`POST /api/finance/chat`).
+Both pillars have a **Log with chat** box running a lightweight keyword/regex
+parser — not an LLM call — e.g. *"saved $1,200 this month, paid $450 on
+loans"* (`lib/finance/parseChat.ts`) or *"did 6 contacts and 2 QIs this
+week, 3 plans"* (`lib/business/parseChat.ts`). Both only ever propose a
+draft patch for you to review (with the exact snippet that matched each
+field) and apply to the form; neither saves data directly. A future version
+could swap either for an actual LLM-based parser without changing the API
+surface (`POST /api/finance/chat`, `POST /api/business/chat`).
 
 ## API
 
+Finance:
 - `GET /api/finance/entries` — list all logged months
 - `POST /api/finance/entries` — create or update the entry for a month
 - `GET /api/finance/entries/[month]` — fetch one month
 - `DELETE /api/finance/entries/[month]` — delete one month
 - `GET /api/finance/score?month=YYYY-MM` — computed score breakdown (defaults to the latest logged month)
 - `POST /api/finance/chat` — parse a chat message into a draft field patch
+
+Business:
+- `GET /api/business/week-entries` — list all logged weeks
+- `POST /api/business/week-entries` — create or update a week's funnel activity
+- `GET|DELETE /api/business/week-entries/[week]` — fetch/delete one week (ISO week key, e.g. `2026-W34`)
+- `GET /api/business/month-entries` — list all logged months' registrations
+- `POST /api/business/month-entries` — create or update a month's registration count
+- `GET|DELETE /api/business/month-entries/[month]` — fetch/delete one month
+- `GET /api/business/score?month=YYYY-MM` — computed score, pacing, and gap tile (defaults to the latest logged month)
+- `POST /api/business/chat` — parse a chat message into weekly + monthly draft patches
 
 ## Deploying
 
@@ -93,7 +141,7 @@ free tiers.
 
 ## What's next
 
-- Business, Health, and Relationships pillars (same score-transparency and
-  chat-logging patterns as Finance)
+- Health and Relationships pillars (same score-transparency and chat-logging
+  patterns as Finance/Business)
 - Home-screen tiles for those pillars once built
 - Eventually: a native iPhone app, once the web version proves useful day to day

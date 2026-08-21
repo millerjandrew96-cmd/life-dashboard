@@ -1,7 +1,9 @@
 import { Tile } from "@/components/Tile";
 import { ScoreRing } from "@/components/ScoreRing";
+import { CounterRing } from "@/components/CounterRing";
 import { computeFinanceScore } from "@/lib/finance/scoring";
 import { listFinanceEntries } from "@/lib/finance/store";
+import { getBusinessScoreForMonth } from "@/lib/business/composeScore";
 
 const money = (n: number) =>
   n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
@@ -13,6 +15,8 @@ export default async function Home() {
   const entries = await listFinanceEntries();
   const latest = entries[entries.length - 1] ?? null;
   const score = latest ? computeFinanceScore(latest) : null;
+
+  const { score: businessScore } = await getBusinessScoreForMonth(null);
 
   return (
     <div className="mx-auto w-full max-w-5xl flex-1 px-6 py-10">
@@ -44,8 +48,15 @@ export default async function Home() {
           )}
         </Tile>
 
-        <Tile title="Business" disabled>
-          <p className="text-sm text-black/50 dark:text-white/50">Score /100 · contacts needed until next projected registration</p>
+        <Tile title="Business" href="/business">
+          {businessScore ? (
+            <div className="flex items-center gap-5">
+              <ScoreRing score={businessScore.totalScore} size={96} />
+              <CounterRing value={businessScore.gap.contactsNeeded} label="contacts needed for next registration" size={96} />
+            </div>
+          ) : (
+            <p className="text-sm text-black/50 dark:text-white/50">No entries logged yet — click in to log your first week.</p>
+          )}
         </Tile>
 
         <Tile title="Health" disabled>
