@@ -2,9 +2,8 @@
 
 A gamified personal life dashboard. Four pillars — Finance, Business, Health,
 Relationships — each with a live score out of 100 and a fully transparent
-breakdown of how that score was earned. This build covers **Finance**,
-**Business**, and **Health**; Relationships is scaffolded as a "coming soon"
-tile on the home screen.
+breakdown of how that score was earned. All four pillars are built and live
+on the home screen.
 
 Stack: Next.js (App Router) + TypeScript + Tailwind CSS, deployed on Vercel,
 data in Supabase (Postgres).
@@ -22,7 +21,8 @@ Open http://localhost:3000. No setup is required to try it — see
 ## Data storage
 
 Each pillar has its own store module (`lib/finance/store.ts`,
-`lib/business/store.ts`, `lib/health/store.ts`) with two backends:
+`lib/business/store.ts`, `lib/health/store.ts`, `lib/relationships/store.ts`)
+with two backends:
 
 - **Supabase** (production): used automatically when `SUPABASE_URL` and
   `SUPABASE_SERVICE_ROLE_KEY` are set. These are server-only env vars — the
@@ -146,18 +146,51 @@ categories, reuses that same average-of-weeks-logged approach. Flagging
 this interpretation in case a literal reused pacing-projection number was
 intended instead.
 
+## Relationships scoring
+
+Implemented in `lib/relationships/scoring.ts`. Built around one monthly
+marriage evaluation (`lib/relationships/types.ts` → `RelationshipEntry`),
+four equally-weighted (25 each) inputs per the spec:
+
+| Category | Weight | How it's scored |
+|---|---|---|
+| Finance | 25 | Auto-pulled from the Finance pillar for the same month — "reused, not re-entered." The Finance score's own value flows through directly as a proportion (`25 × financeScore/100`), not re-bucketed into another tier, since it's already a score |
+| Communication | 25 | Breanne's 0-5 rating, tiered (see below) |
+| Intimacy | 25 | Same 0-5 rating tiers as Communication |
+| Action Item Completion | 25 | % of items due this month that are done — red `0-33%`, yellow `33-66%`, green `66-100%`, gold `100%`, exactly per the spec |
+
+The spec gives no thresholds for the 0-5 Communication/Intimacy ratings
+(unlike every other tiered value in the app) — a judgment call, kept
+consistent with the tiered-fraction convention used everywhere else rather
+than a plain linear scale: red `<2`, yellow `2-3.4`, green `3.5-4.4`, gold
+`4.5+`.
+
+The overall score still converts to a **grade** (A/B/C/D/F, with +/-) rather
+than a raw number for the home screen — the spec specifically calls this
+one a "grade" where the other three pillars are a "score."
+
+Action items (will, insurance, etc.) carry an explicit `due_month` rather
+than a rigid "always exactly next month" rule, so an item can be given more
+runway if needed — next month is just the default when adding one during an
+evaluation. Communication and Intimacy each carry their own "what's going
+well" / "what needs improvement" free-text notes, captured every month as a
+running log (shown chronologically on the page, not just for the selected
+month).
+
 ## Chat-style logging
 
-All three pillars have a **Log with chat** box running a lightweight
+All four pillars have a **Log with chat** box running a lightweight
 keyword/regex parser — not an LLM call — e.g. *"saved $1,200 this month,
 paid $450 on loans"* (`lib/finance/parseChat.ts`), *"did 6 contacts and 2
 QIs this week, 3 plans, 1 business registration"* (`lib/business/parseChat.ts`),
-or *"walked 8000 steps, 180g protein, 2100 calories, weighed 228"*
-(`lib/health/parseChat.ts`). All of them only ever propose a draft patch for
-you to review (with the exact snippet that matched each field) and apply to
-the form; none save data directly. A future version could swap any of them
-for an actual LLM-based parser without changing the API surface
-(`POST /api/finance/chat`, `POST /api/business/chat`, `POST /api/health/chat`).
+*"walked 8000 steps, 180g protein, 2100 calories, weighed 228"*
+(`lib/health/parseChat.ts`), or *"communication was a 4, intimacy a 3, add
+action item: renew life insurance"* (`lib/relationships/parseChat.ts`). All
+of them only ever propose a draft patch for you to review (with the exact
+snippet that matched each field) and apply to the form; none save data
+directly. A future version could swap any of them for an actual LLM-based
+parser without changing the API surface (`POST /api/finance/chat`,
+`POST /api/business/chat`, `POST /api/health/chat`, `POST /api/relationships/chat`).
 
 ## API
 
@@ -186,6 +219,16 @@ Health:
 - `GET /api/health/score?month=YYYY-MM` — computed score + weight status (defaults to the latest logged month)
 - `POST /api/health/chat` — parse a chat message into a draft field patch
 
+Relationships:
+- `GET /api/relationships/entries` — list all logged monthly evaluations
+- `POST /api/relationships/entries` — create or update the evaluation for a month
+- `GET|DELETE /api/relationships/entries/[month]` — fetch/delete one month
+- `GET /api/relationships/action-items` — list all action items
+- `POST /api/relationships/action-items` — create a new action item
+- `PATCH|DELETE /api/relationships/action-items/[id]` — update (e.g. toggle done) or delete one item
+- `GET /api/relationships/score?month=YYYY-MM` — computed score + grade (defaults to the latest logged month)
+- `POST /api/relationships/chat` — parse a chat message into a draft field patch
+
 ## Deploying
 
 Push to a GitHub repo, import into [Vercel](https://vercel.com), set the two
@@ -194,7 +237,11 @@ free tiers.
 
 ## What's next
 
-- Relationships pillar (same score-transparency and chat-logging patterns as
-  the other three)
-- A home-screen tile for it once built
-- Eventually: a native iPhone app, once the web version proves useful day to day
+All four pillars are built. Remaining ideas from the spec, not yet done:
+
+- A few flagged judgment calls (Business/Health/Relationships category
+  weights, Health's pacing interpretation, the 0-5 rating tiers) are worth
+  revisiting against how the scores feel in practice with real data
+- Bank/Apple Health API integration (Plaid, HealthKit) — explicitly out of
+  scope for v1 per the spec, manual entry only for now
+- A native iPhone app, once the web version proves useful day to day

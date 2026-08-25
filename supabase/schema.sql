@@ -96,3 +96,44 @@ drop trigger if exists health_week_entries_set_updated_at on health_week_entries
 create trigger health_week_entries_set_updated_at
   before update on health_week_entries
   for each row execute function set_updated_at();
+
+-- Life Dashboard — Relationships pillar schema
+--
+-- Finance score is deliberately NOT duplicated here — it's pulled live from finance_entries
+-- at read time, per the spec ("auto-pulled from Finance pillar — reused, not re-entered").
+
+create table if not exists relationship_entries (
+  month text primary key check (month ~ '^\d{4}-(0[1-9]|1[0-2])$'),
+  communication_rating numeric not null default 0 check (communication_rating between 0 and 5),
+  communication_going_well text,
+  communication_improve text,
+  intimacy_rating numeric not null default 0 check (intimacy_rating between 0 and 5),
+  intimacy_going_well text,
+  intimacy_improve text,
+  notes text,
+  updated_at timestamptz not null default now()
+);
+
+alter table relationship_entries enable row level security;
+
+drop trigger if exists relationship_entries_set_updated_at on relationship_entries;
+create trigger relationship_entries_set_updated_at
+  before update on relationship_entries
+  for each row execute function set_updated_at();
+
+create table if not exists relationship_action_items (
+  id uuid primary key default gen_random_uuid(),
+  description text not null,
+  due_month text not null check (due_month ~ '^\d{4}-(0[1-9]|1[0-2])$'),
+  done boolean not null default false,
+  notes text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table relationship_action_items enable row level security;
+
+drop trigger if exists relationship_action_items_set_updated_at on relationship_action_items;
+create trigger relationship_action_items_set_updated_at
+  before update on relationship_action_items
+  for each row execute function set_updated_at();

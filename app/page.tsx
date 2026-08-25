@@ -5,6 +5,8 @@ import { computeFinanceScore } from "@/lib/finance/scoring";
 import { listFinanceEntries } from "@/lib/finance/store";
 import { getBusinessScoreForMonth } from "@/lib/business/composeScore";
 import { getHealthScoreForMonth } from "@/lib/health/composeScore";
+import { getRelationshipScoreForMonth } from "@/lib/relationships/composeScore";
+import { addMonths, currentMonthKey, formatMonthLabel } from "@/lib/finance/month";
 
 const money = (n: number) =>
   n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
@@ -19,6 +21,10 @@ export default async function Home() {
 
   const { score: businessScore } = await getBusinessScoreForMonth(null);
   const { score: healthScore } = await getHealthScoreForMonth(null);
+
+  const { score: relationshipScore, actionItems } = await getRelationshipScoreForMonth(null);
+  const nextMonth = addMonths(currentMonthKey(), 1);
+  const itemsDueNextMonth = actionItems.filter((i) => i.due_month === nextMonth && !i.done).length;
 
   return (
     <div className="mx-auto w-full max-w-5xl flex-1 px-6 py-10">
@@ -88,8 +94,36 @@ export default async function Home() {
           )}
         </Tile>
 
-        <Tile title="Relationships" disabled>
-          <p className="text-sm text-black/50 dark:text-white/50">Overall grade · areas to improve · action items due</p>
+        <Tile title="Relationships" href="/relationships">
+          {relationshipScore ? (
+            <div className="flex items-center gap-5">
+              <div
+                className={`text-4xl font-black ${
+                  relationshipScore.grade.startsWith("A")
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : relationshipScore.grade.startsWith("B")
+                      ? "text-green-600 dark:text-green-400"
+                      : relationshipScore.grade.startsWith("C")
+                        ? "text-amber-600 dark:text-amber-400"
+                        : "text-red-600 dark:text-red-400"
+                }`}
+              >
+                {relationshipScore.grade}
+              </div>
+              <dl className="grid grid-cols-1 gap-1 text-sm">
+                <div>
+                  <dt className="inline text-black/50 dark:text-white/50">Areas to improve: </dt>
+                  <dd className="inline font-medium">{relationshipScore.suggestions.length}</dd>
+                </div>
+                <div>
+                  <dt className="inline text-black/50 dark:text-white/50">Action items due by {formatMonthLabel(nextMonth)}: </dt>
+                  <dd className="inline font-medium">{itemsDueNextMonth}</dd>
+                </div>
+              </dl>
+            </div>
+          ) : (
+            <p className="text-sm text-black/50 dark:text-white/50">No evaluations logged yet — click in to log this month&apos;s.</p>
+          )}
         </Tile>
       </div>
     </div>
