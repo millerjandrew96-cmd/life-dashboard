@@ -59,3 +59,40 @@ drop trigger if exists business_week_entries_set_updated_at on business_week_ent
 create trigger business_week_entries_set_updated_at
   before update on business_week_entries
   for each row execute function set_updated_at();
+
+-- Life Dashboard — Health pillar schema
+--
+-- Steps/nutrition/weight are logged daily (each column independently nullable — "not logged"
+-- must stay distinguishable from "logged as 0"); workouts are logged weekly per the spec.
+
+create table if not exists health_daily_entries (
+  date date primary key,
+  steps integer,
+  protein_g numeric,
+  calories numeric,
+  weight_lbs numeric,
+  notes text,
+  updated_at timestamptz not null default now()
+);
+
+alter table health_daily_entries enable row level security;
+
+drop trigger if exists health_daily_entries_set_updated_at on health_daily_entries;
+create trigger health_daily_entries_set_updated_at
+  before update on health_daily_entries
+  for each row execute function set_updated_at();
+
+create table if not exists health_week_entries (
+  week text primary key check (week ~ '^\d{4}-W(0[1-9]|[1-4]\d|5[0-3])$'),
+  workouts integer not null default 0,
+  intensity text not null default 'low' check (intensity in ('low', 'medium', 'high')),
+  notes text,
+  updated_at timestamptz not null default now()
+);
+
+alter table health_week_entries enable row level security;
+
+drop trigger if exists health_week_entries_set_updated_at on health_week_entries;
+create trigger health_week_entries_set_updated_at
+  before update on health_week_entries
+  for each row execute function set_updated_at();

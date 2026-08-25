@@ -2,9 +2,9 @@
 
 A gamified personal life dashboard. Four pillars — Finance, Business, Health,
 Relationships — each with a live score out of 100 and a fully transparent
-breakdown of how that score was earned. This build covers **Finance** and
-**Business**; Health and Relationships are scaffolded as "coming soon" tiles
-on the home screen.
+breakdown of how that score was earned. This build covers **Finance**,
+**Business**, and **Health**; Relationships is scaffolded as a "coming soon"
+tile on the home screen.
 
 Stack: Next.js (App Router) + TypeScript + Tailwind CSS, deployed on Vercel,
 data in Supabase (Postgres).
@@ -22,7 +22,7 @@ Open http://localhost:3000. No setup is required to try it — see
 ## Data storage
 
 Each pillar has its own store module (`lib/finance/store.ts`,
-`lib/business/store.ts`) with two backends:
+`lib/business/store.ts`, `lib/health/store.ts`) with two backends:
 
 - **Supabase** (production): used automatically when `SUPABASE_URL` and
   `SUPABASE_SERVICE_ROLE_KEY` are set. These are server-only env vars — the
@@ -108,16 +108,56 @@ Two additional live indicators sit next to the hero score, per the spec:
   reflected fairly. The same baseline logic (10:1) flags a
   Quality-Invite-to-registration ratio that's slipping, as a suggestion.
 
+## Health scoring
+
+Implemented in `lib/health/scoring.ts`. No wearables — only what a phone and
+MyFitnessPal can capture manually. Sleep, hydration, and heart rate are
+excluded per the spec (no reliable data source). Two cadences:
+steps/nutrition/weight are logged **daily** (`lib/health/types.ts` →
+`HealthDailyEntry` — every field independently nullable, since "not logged"
+and "logged as 0" are different things), while workouts are logged
+**weekly** (`HealthWeekEntry`), matching the spec's own cadence split.
+
+100 points total, spread across Steps/Workouts/Nutrition. The spec doesn't
+assign explicit weights the way Finance and Business do — this is a
+judgment call, split roughly even with Nutrition a touch lighter since its
+own internal structure already spreads credit three ways:
+
+| Category | Weight | Tiers |
+|---|---|---|
+| Steps | 35 | red `<4,000`, yellow `4,000–6,000`, green `6,000–10,000`, gold `10,000+` (avg/day for the month) |
+| Workouts | 35 | frequency red `0-1`, yellow `2`, green `3-4`, gold `5+` per week, then a perceived-intensity bonus multiplier (low ×1, medium ×1.15, high ×1.3, capped at 100%) — tuned so 3 hard sessions can rival 5 easy ones, per the spec |
+| Nutrition | 30 | 5% just for logging (scaled by % of applicable days logged) + 47.5% protein tier (red `<150g`, yellow `150–200g`, green `200–230g`, gold `230g+`) + 47.5% calories tier — a sweet-spot curve, not monotonic: green `1,800–2,200`, yellow `1,500–1,800` or `2,200–2,500`, red outside that |
+
+Weight is tracked but shown as a parallel, unscored figure (like Finance's
+retirement balance) — an absolute tier (`green <230`, `yellow 230–240`,
+`red >240`) plus a binary month-over-month direction (loss = green, gain =
+red), both based on the month's *average* weigh-in rather than a single
+reading, so one unusual day doesn't swing the number.
+
+The spec describes the overall score as "pacing-adjusted" using the same
+soft-grace logic as Business. Business's pacing curve projects a
+*cumulative* count (registrations) forward — that doesn't translate
+directly to Steps/Nutrition, which are already *rates* (average per day):
+averaging only the days actually logged so far in the month already gives
+the same "day 2 isn't judged against a full month" grace without needing a
+separate projection formula. Workouts, being a weekly count like Business's
+categories, reuses that same average-of-weeks-logged approach. Flagging
+this interpretation in case a literal reused pacing-projection number was
+intended instead.
+
 ## Chat-style logging
 
-Both pillars have a **Log with chat** box running a lightweight keyword/regex
-parser — not an LLM call — e.g. *"saved $1,200 this month, paid $450 on
-loans"* (`lib/finance/parseChat.ts`) or *"did 6 contacts and 2 QIs this
-week, 3 plans, 1 business registration"* (`lib/business/parseChat.ts`). Both
-only ever propose a draft patch for you to review (with the exact snippet
-that matched each field) and apply to the form; neither saves data directly.
-A future version could swap either for an actual LLM-based parser without
-changing the API surface (`POST /api/finance/chat`, `POST /api/business/chat`).
+All three pillars have a **Log with chat** box running a lightweight
+keyword/regex parser — not an LLM call — e.g. *"saved $1,200 this month,
+paid $450 on loans"* (`lib/finance/parseChat.ts`), *"did 6 contacts and 2
+QIs this week, 3 plans, 1 business registration"* (`lib/business/parseChat.ts`),
+or *"walked 8000 steps, 180g protein, 2100 calories, weighed 228"*
+(`lib/health/parseChat.ts`). All of them only ever propose a draft patch for
+you to review (with the exact snippet that matched each field) and apply to
+the form; none save data directly. A future version could swap any of them
+for an actual LLM-based parser without changing the API surface
+(`POST /api/finance/chat`, `POST /api/business/chat`, `POST /api/health/chat`).
 
 ## API
 
@@ -136,6 +176,16 @@ Business:
 - `GET /api/business/score?month=YYYY-MM` — computed score, pacing, and gap tile (defaults to the latest logged month)
 - `POST /api/business/chat` — parse a chat message into a draft field patch
 
+Health:
+- `GET /api/health/daily-entries` — list all logged days
+- `POST /api/health/daily-entries` — create or update a day's steps/nutrition/weight
+- `GET|DELETE /api/health/daily-entries/[date]` — fetch/delete one day (`YYYY-MM-DD`)
+- `GET /api/health/week-entries` — list all logged weeks of workouts
+- `POST /api/health/week-entries` — create or update a week's workout count + intensity
+- `GET|DELETE /api/health/week-entries/[week]` — fetch/delete one week (ISO week key)
+- `GET /api/health/score?month=YYYY-MM` — computed score + weight status (defaults to the latest logged month)
+- `POST /api/health/chat` — parse a chat message into a draft field patch
+
 ## Deploying
 
 Push to a GitHub repo, import into [Vercel](https://vercel.com), set the two
@@ -144,7 +194,7 @@ free tiers.
 
 ## What's next
 
-- Health and Relationships pillars (same score-transparency and chat-logging
-  patterns as Finance/Business)
-- Home-screen tiles for those pillars once built
+- Relationships pillar (same score-transparency and chat-logging patterns as
+  the other three)
+- A home-screen tile for it once built
 - Eventually: a native iPhone app, once the web version proves useful day to day

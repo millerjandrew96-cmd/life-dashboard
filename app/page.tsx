@@ -4,6 +4,7 @@ import { CounterRing } from "@/components/CounterRing";
 import { computeFinanceScore } from "@/lib/finance/scoring";
 import { listFinanceEntries } from "@/lib/finance/store";
 import { getBusinessScoreForMonth } from "@/lib/business/composeScore";
+import { getHealthScoreForMonth } from "@/lib/health/composeScore";
 
 const money = (n: number) =>
   n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
@@ -17,6 +18,7 @@ export default async function Home() {
   const score = latest ? computeFinanceScore(latest) : null;
 
   const { score: businessScore } = await getBusinessScoreForMonth(null);
+  const { score: healthScore } = await getHealthScoreForMonth(null);
 
   return (
     <div className="mx-auto w-full max-w-5xl flex-1 px-6 py-10">
@@ -59,8 +61,31 @@ export default async function Home() {
           )}
         </Tile>
 
-        <Tile title="Health" disabled>
-          <p className="text-sm text-black/50 dark:text-white/50">Pacing-adjusted score /100 · weight + change vs last month</p>
+        <Tile title="Health" href="/health">
+          {healthScore ? (
+            <div className="flex items-center gap-5">
+              <ScoreRing score={healthScore.totalScore} size={96} />
+              <dl className="grid grid-cols-1 gap-1 text-sm">
+                <div>
+                  <dt className="inline text-black/50 dark:text-white/50">Weight: </dt>
+                  <dd className="inline font-medium">
+                    {healthScore.weight.currentMonthAvg !== null ? `${healthScore.weight.currentMonthAvg.toFixed(1)} lbs` : "—"}
+                  </dd>
+                </div>
+                {healthScore.weight.changeVsLastMonth !== null && (
+                  <div>
+                    <dt className="inline text-black/50 dark:text-white/50">vs last month: </dt>
+                    <dd className="inline font-medium">
+                      {healthScore.weight.changeVsLastMonth > 0 ? "+" : ""}
+                      {healthScore.weight.changeVsLastMonth.toFixed(1)} lbs
+                    </dd>
+                  </div>
+                )}
+              </dl>
+            </div>
+          ) : (
+            <p className="text-sm text-black/50 dark:text-white/50">No entries logged yet — click in to log your first day.</p>
+          )}
         </Tile>
 
         <Tile title="Relationships" disabled>
