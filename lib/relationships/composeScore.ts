@@ -15,11 +15,12 @@ export async function getRelationshipScoreForMonth(requestedMonth: string | null
 }> {
   const [entries, actionItems] = await Promise.all([listRelationshipEntries(), listRelationshipActionItems()]);
 
-  const months = new Set([...entries.map((e) => e.month), ...actionItems.map((i) => i.due_month)]);
-  const latest = [...months].sort().at(-1) ?? null;
-  const month = requestedMonth ?? latest ?? currentMonthKey();
+  // Only evaluation months count as "latest" — an action item's due_month can legitimately
+  // sit in the future and must never pull the default view ahead of the last real evaluation.
+  const latestEvaluatedMonth = entries.map((e) => e.month).sort().at(-1) ?? null;
+  const month = requestedMonth ?? latestEvaluatedMonth ?? currentMonthKey();
 
-  if (latest === null) {
+  if (entries.length === 0 && actionItems.length === 0) {
     return { month, score: null, entries, actionItems };
   }
 
