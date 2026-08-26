@@ -237,11 +237,11 @@ free tiers.
 
 ## What's next
 
-All four pillars are built. Remaining ideas from the spec, not yet done:
+All four pillars are built, and the judgment calls flagged during
+development (category weights, the 0-5 rating tiers, Health's pacing
+interpretation) have been reviewed and confirmed. Remaining ideas from the
+spec, not yet done:
 
-- A few flagged judgment calls (Business/Health/Relationships category
-  weights, Health's pacing interpretation, the 0-5 rating tiers) are worth
-  revisiting against how the scores feel in practice with real data
 - Bank/Apple Health API integration (Plaid, HealthKit) — explicitly out of
   scope for v1 per the spec, manual entry only for now
 - A native iPhone app, once the web version proves useful day to day
