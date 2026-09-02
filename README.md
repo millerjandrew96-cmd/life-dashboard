@@ -3,8 +3,9 @@
 A gamified personal life dashboard. Four pillars — Finance, Business, Health,
 Relationships — each with a live score out of 100 and a fully transparent
 breakdown of how that score was earned. All four pillars are built and live
-on the home screen, plus a cross-pillar **monthly priorities** list below
-them for whatever doesn't belong to any single pillar's score.
+on the home screen. The home screen also surfaces this month's Relationships
+action items as a checklist below the pillar tiles — the same list as the
+Relationships pillar, editable from either place.
 
 Stack: Next.js (App Router) + TypeScript + Tailwind CSS, deployed on Vercel,
 data in Supabase (Postgres).
@@ -21,9 +22,9 @@ Open http://localhost:3000. No setup is required to try it — see
 
 ## Data storage
 
-Each pillar (plus the cross-pillar priorities list) has its own store module
-(`lib/finance/store.ts`, `lib/business/store.ts`, `lib/health/store.ts`,
-`lib/relationships/store.ts`, `lib/priorities/store.ts`) with two backends:
+Each pillar has its own store module (`lib/finance/store.ts`,
+`lib/business/store.ts`, `lib/health/store.ts`, `lib/relationships/store.ts`)
+with two backends:
 
 - **Supabase** (production): used automatically when `SUPABASE_URL` and
   `SUPABASE_SERVICE_ROLE_KEY` are set. These are server-only env vars — the
@@ -193,14 +194,19 @@ directly. A future version could swap any of them for an actual LLM-based
 parser without changing the API surface (`POST /api/finance/chat`,
 `POST /api/business/chat`, `POST /api/health/chat`, `POST /api/relationships/chat`).
 
-## Monthly priorities
+## Home screen action items checklist
 
-A lightweight, free-text to-do list (`lib/priorities/types.ts` → `Priority`)
-shown on the home screen below the four pillar tiles, for whatever doesn't
-belong to any single pillar's score — not everything worth tracking in a
-month fits neatly into Finance/Business/Health/Relationships. Each item is
-scoped to a month, with a done/open toggle; the home screen shows the
-current month's list with inline add/toggle/remove.
+The home screen shows the current month's Relationships action items as a
+checklist below the four pillar tiles (`components/ActionItemsChecklist.tsx`)
+— the exact same `relationship_action_items` data as the Relationships
+pillar, not a separate list. Add, check off, or remove an item from either
+the home screen or `/relationships` and it shows up in both places, since
+they both read and write the same records. The only difference between the
+two call sites is which month's items are shown and what a newly-added
+item defaults to for its due date: the home screen shows/adds to the
+current calendar month, while the Relationships page shows whatever month
+you're viewing and defaults new items to the month after it (the usual
+"assigned this evaluation, due by the next one" flow).
 
 ## API
 
@@ -239,10 +245,8 @@ Relationships:
 - `GET /api/relationships/score?month=YYYY-MM` — computed score + grade (defaults to the latest logged month)
 - `POST /api/relationships/chat` — parse a chat message into a draft field patch
 
-Priorities:
-- `GET /api/priorities` — list all priorities (across all months)
-- `POST /api/priorities` — create a new priority for a month
-- `PATCH|DELETE /api/priorities/[id]` — update (e.g. toggle done) or delete one item
+The home screen's action items checklist uses these same
+`relationship_action_items` endpoints — no separate API.
 
 ## Deploying
 

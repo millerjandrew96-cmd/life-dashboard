@@ -1,13 +1,12 @@
 import { Tile } from "@/components/Tile";
 import { ScoreRing } from "@/components/ScoreRing";
 import { CounterRing } from "@/components/CounterRing";
-import { PrioritiesList } from "@/components/PrioritiesList";
+import { ActionItemsChecklist } from "@/components/ActionItemsChecklist";
 import { computeFinanceScore } from "@/lib/finance/scoring";
 import { listFinanceEntries } from "@/lib/finance/store";
 import { getBusinessScoreForMonth } from "@/lib/business/composeScore";
 import { getHealthScoreForMonth } from "@/lib/health/composeScore";
 import { getRelationshipScoreForMonth } from "@/lib/relationships/composeScore";
-import { listPriorities } from "@/lib/priorities/store";
 import { addMonths, currentMonthKey, formatMonthLabel } from "@/lib/finance/month";
 
 const money = (n: number) =>
@@ -25,11 +24,10 @@ export default async function Home() {
   const { score: healthScore } = await getHealthScoreForMonth(null);
 
   const { score: relationshipScore, actionItems } = await getRelationshipScoreForMonth(null);
-  const nextMonth = addMonths(currentMonthKey(), 1);
-  const itemsDueNextMonth = actionItems.filter((i) => i.due_month === nextMonth && !i.done).length;
-
   const thisMonth = currentMonthKey();
-  const priorities = (await listPriorities()).filter((p) => p.month === thisMonth);
+  const nextMonth = addMonths(thisMonth, 1);
+  const itemsDueNextMonth = actionItems.filter((i) => i.due_month === nextMonth && !i.done).length;
+  const itemsDueThisMonth = actionItems.filter((i) => i.due_month === thisMonth);
 
   return (
     <div className="mx-auto w-full max-w-5xl flex-1 px-6 py-10">
@@ -132,7 +130,14 @@ export default async function Home() {
         </Tile>
       </div>
 
-      <PrioritiesList month={thisMonth} priorities={priorities} />
+      <section className="mt-8">
+        <ActionItemsChecklist
+          month={thisMonth}
+          items={itemsDueThisMonth}
+          defaultDueMonth={thisMonth}
+          heading="This month's to-dos"
+        />
+      </section>
     </div>
   );
 }

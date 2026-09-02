@@ -137,21 +137,3 @@ drop trigger if exists relationship_action_items_set_updated_at on relationship_
 create trigger relationship_action_items_set_updated_at
   before update on relationship_action_items
   for each row execute function set_updated_at();
-
--- Cross-pillar monthly priorities, shown on the home screen below the four pillar tiles.
-create table if not exists priorities (
-  id uuid primary key default gen_random_uuid(),
-  month text not null check (month ~ '^\d{4}-(0[1-9]|1[0-2])$'),
-  description text not null,
-  done boolean not null default false,
-  notes text,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
-alter table priorities enable row level security;
-
-drop trigger if exists priorities_set_updated_at on priorities;
-create trigger priorities_set_updated_at
-  before update on priorities
-  for each row execute function set_updated_at();
