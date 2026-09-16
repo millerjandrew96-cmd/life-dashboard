@@ -20,10 +20,14 @@ export default async function Home() {
   const latest = entries[entries.length - 1] ?? null;
   const score = latest ? computeFinanceScore(latest) : null;
 
-  const { score: businessScore } = await getBusinessScoreForMonth(null);
-  const { score: healthScore } = await getHealthScoreForMonth(null);
+  // Independent Supabase round trips — run together instead of stacking up sequentially.
+  // Relationships gets the Finance entries we already fetched above so it doesn't re-query them.
+  const [{ score: businessScore }, { score: healthScore }, { score: relationshipScore, actionItems }] = await Promise.all([
+    getBusinessScoreForMonth(null),
+    getHealthScoreForMonth(null),
+    getRelationshipScoreForMonth(null, entries),
+  ]);
 
-  const { score: relationshipScore, actionItems } = await getRelationshipScoreForMonth(null);
   const thisMonth = currentMonthKey();
   const nextMonth = addMonths(thisMonth, 1);
   const itemsDueNextMonth = actionItems.filter((i) => i.due_month === nextMonth && !i.done).length;
