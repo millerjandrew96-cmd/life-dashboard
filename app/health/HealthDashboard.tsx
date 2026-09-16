@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ScoreRing } from "@/components/ScoreRing";
-import { TierBadge } from "@/components/TierBadge";
+import { TierBadge, TIER_TEXT_COLOR } from "@/components/TierBadge";
 import { formatMonthLabel } from "@/lib/finance/month";
 import { currentWeekKey, mondayDateString, monthOfWeek, weekKeyFromDateString, weekLabel } from "@/lib/business/week";
 import { currentDayKey, dayLabel } from "@/lib/health/day";
@@ -219,7 +219,35 @@ export function HealthDashboard({
 
           <section className="mb-8">
             <h2 className="mb-3 text-lg font-semibold">Score breakdown</h2>
-            <div className="overflow-x-auto rounded-xl border border-black/10 dark:border-white/10">
+
+            {/* Below sm: a five-column table doesn't fit a phone screen without horizontal
+                scrolling, so each category becomes its own stacked row instead. */}
+            <div className="rounded-xl border border-black/10 dark:border-white/10 sm:hidden">
+              {score.categories.map((c, i) => (
+                <div
+                  key={c.key}
+                  className={`px-4 py-2.5 ${i > 0 ? "border-t border-black/10 dark:border-white/10" : ""}`}
+                >
+                  <div className="mb-1 flex items-center justify-between gap-2">
+                    <span className="text-sm font-medium">{c.label}</span>
+                    <TierBadge tier={c.tier} />
+                  </div>
+                  <p className="mb-1.5 text-xs text-black/60 dark:text-white/60">{c.rawValue}</p>
+                  <div className="flex items-baseline justify-between text-sm">
+                    <span className="text-xs text-black/40 dark:text-white/40">Weight {c.weight}</span>
+                    <span className={`font-semibold ${c.tier ? TIER_TEXT_COLOR[c.tier] : ""}`}>
+                      {c.pointsEarned.toFixed(1)} / {c.maxPoints}
+                    </span>
+                  </div>
+                </div>
+              ))}
+              <div className="flex items-center justify-between border-t-2 border-black/20 px-4 py-2.5 font-bold dark:border-white/20">
+                <span>Total</span>
+                <span>{score.totalScore} / 100</span>
+              </div>
+            </div>
+
+            <div className="hidden overflow-x-auto rounded-xl border border-black/10 sm:block dark:border-white/10">
               <table className="w-full text-sm">
                 <thead className="bg-black/5 text-left dark:bg-white/5">
                   <tr>
