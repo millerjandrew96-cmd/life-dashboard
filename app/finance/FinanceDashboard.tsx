@@ -148,7 +148,11 @@ export function FinanceDashboard({
 
   return (
     <div className="mx-auto w-full max-w-4xl flex-1 px-6 py-10">
-      <PageHeader title="Finance" subtitle={formatMonthLabel(selectedMonth)} />
+      <PageHeader
+        title="Finance"
+        subtitle={formatMonthLabel(selectedMonth)}
+        badge={score && <ScoreRing score={score.totalScore} size={40} />}
+      />
 
       {score ? (
         <>

@@ -190,7 +190,11 @@ export function HealthDashboard({
 
   return (
     <div className="mx-auto w-full max-w-4xl flex-1 px-6 py-10">
-      <PageHeader title="Health" subtitle={formatMonthLabel(selectedMonth)} />
+      <PageHeader
+        title="Health"
+        subtitle={formatMonthLabel(selectedMonth)}
+        badge={score && <ScoreRing score={score.totalScore} size={40} />}
+      />
 
       {score ? (
         <>

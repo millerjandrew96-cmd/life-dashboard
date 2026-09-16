@@ -147,7 +147,19 @@ export function RelationshipsDashboard({
 
   return (
     <div className="mx-auto w-full max-w-4xl flex-1 px-6 py-10">
-      <PageHeader title="Relationships" subtitle={formatMonthLabel(selectedMonth)} />
+      <PageHeader
+        title="Relationships"
+        subtitle={formatMonthLabel(selectedMonth)}
+        badge={
+          score && (
+            <div
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-current text-base font-black ${gradeColor(score.grade)}`}
+            >
+              {score.grade}
+            </div>
+          )
+        }
+      />
 
       {score ? (
         <>

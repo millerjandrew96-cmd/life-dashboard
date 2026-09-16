@@ -133,7 +133,11 @@ export function BusinessDashboard({
 
   return (
     <div className="mx-auto w-full max-w-4xl flex-1 px-6 py-10">
-      <PageHeader title="Business" subtitle={formatMonthLabel(selectedMonth)} />
+      <PageHeader
+        title="Business"
+        subtitle={formatMonthLabel(selectedMonth)}
+        badge={score && <ScoreRing score={score.totalScore} size={40} />}
+      />
 
       {score ? (
         <>
