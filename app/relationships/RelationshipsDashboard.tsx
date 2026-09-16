@@ -6,7 +6,9 @@ import { useRouter } from "next/navigation";
 import { TierBadge, TIER_TEXT_COLOR } from "@/components/TierBadge";
 import { ActionItemsChecklist } from "@/components/ActionItemsChecklist";
 import { PageHeader } from "@/components/PageHeader";
+import { HeaderScoreBadge } from "@/components/HeaderScoreBadge";
 import { addMonths, formatMonthLabel } from "@/lib/finance/month";
+import { gradeColor } from "@/lib/grade";
 import type { RelationshipChatParseResult } from "@/lib/relationships/parseChat";
 import type { RelationshipActionItem, RelationshipEntry, RelationshipScore } from "@/lib/relationships/types";
 
@@ -32,13 +34,6 @@ function emptyEvalForm(month: string, existing: RelationshipEntry | null): EvalF
     intimacy_improve: existing?.intimacy_improve ?? "",
     notes: existing?.notes ?? "",
   };
-}
-
-function gradeColor(grade: string): string {
-  if (grade.startsWith("A")) return "text-emerald-600 dark:text-emerald-400";
-  if (grade.startsWith("B")) return "text-green-600 dark:text-green-400";
-  if (grade.startsWith("C")) return "text-amber-600 dark:text-amber-400";
-  return "text-red-600 dark:text-red-400";
 }
 
 export function RelationshipsDashboard({
@@ -150,15 +145,7 @@ export function RelationshipsDashboard({
       <PageHeader
         title="Relationships"
         subtitle={formatMonthLabel(selectedMonth)}
-        badge={
-          score && (
-            <div
-              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-current text-base font-black ${gradeColor(score.grade)}`}
-            >
-              {score.grade}
-            </div>
-          )
-        }
+        badge={score && <HeaderScoreBadge score={score.totalScore} />}
       />
 
       {score ? (

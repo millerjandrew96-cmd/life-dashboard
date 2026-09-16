@@ -1,4 +1,5 @@
 import type { Tier } from "@/lib/finance/types";
+import { gradeFor } from "@/lib/grade";
 import { actionItemsSuggestion, communicationSuggestion, financeSuggestion, intimacySuggestion } from "./suggestions";
 import type { RelationshipActionItem, RelationshipCategoryBreakdown, RelationshipEntry, RelationshipScore } from "./types";
 
@@ -35,19 +36,6 @@ export function financeFractionTier(financeScore: number): Tier {
   if (financeScore >= 70) return "green";
   if (financeScore >= 50) return "yellow";
   return "red";
-}
-
-export function gradeFor(totalScore: number): string {
-  if (totalScore >= 93) return "A";
-  if (totalScore >= 90) return "A-";
-  if (totalScore >= 87) return "B+";
-  if (totalScore >= 83) return "B";
-  if (totalScore >= 80) return "B-";
-  if (totalScore >= 77) return "C+";
-  if (totalScore >= 73) return "C";
-  if (totalScore >= 70) return "C-";
-  if (totalScore >= 60) return "D";
-  return "F";
 }
 
 export function computeRelationshipScore(args: {

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ScoreRing } from "@/components/ScoreRing";
 import { TierBadge, TIER_TEXT_COLOR } from "@/components/TierBadge";
 import { PageHeader } from "@/components/PageHeader";
+import { HeaderScoreBadge } from "@/components/HeaderScoreBadge";
 import { formatMonthLabel } from "@/lib/finance/month";
 import type { ChatParseField, ChatParseResult } from "@/lib/finance/parseChat";
 import { computeFinanceScore } from "@/lib/finance/scoring";
@@ -151,7 +152,7 @@ export function FinanceDashboard({
       <PageHeader
         title="Finance"
         subtitle={formatMonthLabel(selectedMonth)}
-        badge={score && <ScoreRing score={score.totalScore} size={40} />}
+        badge={score && <HeaderScoreBadge score={score.totalScore} />}
       />
 
       {score ? (

@@ -6,11 +6,13 @@ export function Tile({
   href,
   children,
   disabled = false,
+  badge,
 }: {
   title: string;
   href?: string;
   children: ReactNode;
   disabled?: boolean;
+  badge?: ReactNode;
 }) {
   const content = (
     <div
@@ -20,7 +22,10 @@ export function Tile({
     >
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-black/60 dark:text-white/60">{title}</h2>
-        {disabled && <span className="text-xs italic text-black/40 dark:text-white/40">coming soon</span>}
+        <div className="flex items-center gap-2">
+          {disabled && <span className="text-xs italic text-black/40 dark:text-white/40">coming soon</span>}
+          {badge}
+        </div>
       </div>
       {children}
     </div>

@@ -8,6 +8,7 @@ import { CounterRing } from "@/components/CounterRing";
 import { TierBadge, TIER_TEXT_COLOR } from "@/components/TierBadge";
 import { LogRowCard } from "@/components/LogRowCard";
 import { PageHeader } from "@/components/PageHeader";
+import { HeaderScoreBadge } from "@/components/HeaderScoreBadge";
 import { formatMonthLabel } from "@/lib/finance/month";
 import { currentWeekKey, mondayDateString, monthOfWeek, weekKeyFromDateString, weekLabel } from "@/lib/business/week";
 import type { BusinessChatParseResult, WeeklyField } from "@/lib/business/parseChat";
@@ -136,7 +137,7 @@ export function BusinessDashboard({
       <PageHeader
         title="Business"
         subtitle={formatMonthLabel(selectedMonth)}
-        badge={score && <ScoreRing score={score.totalScore} size={40} />}
+        badge={score && <HeaderScoreBadge score={score.totalScore} />}
       />
 
       {score ? (
