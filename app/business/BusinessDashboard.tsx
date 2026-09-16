@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ScoreRing } from "@/components/ScoreRing";
 import { CounterRing } from "@/components/CounterRing";
 import { TierBadge, TIER_TEXT_COLOR } from "@/components/TierBadge";
+import { LogRowCard } from "@/components/LogRowCard";
 import { formatMonthLabel } from "@/lib/finance/month";
 import { currentWeekKey, mondayDateString, monthOfWeek, weekKeyFromDateString, weekLabel } from "@/lib/business/week";
 import type { BusinessChatParseResult, WeeklyField } from "@/lib/business/parseChat";
@@ -337,7 +338,28 @@ export function BusinessDashboard({
       {sortedWeeks.length > 0 && (
         <section className="mb-8">
           <h2 className="mb-3 text-lg font-semibold">Weekly log</h2>
-          <div className="overflow-x-auto rounded-xl border border-black/10 dark:border-white/10">
+
+          {/* Below sm: eight columns doesn't fit a phone screen without horizontal scrolling. */}
+          <div className="divide-y divide-black/10 rounded-xl border border-black/10 dark:divide-white/10 dark:border-white/10 sm:hidden">
+            {sortedWeeks.map((w) => (
+              <LogRowCard
+                key={w.week}
+                title={weekLabel(w.week)}
+                onEdit={() => loadWeekIntoForm(w.week)}
+                cols={3}
+                stats={[
+                  { label: "Contacts", value: String(w.contacts) },
+                  { label: "QI", value: String(w.quality_invites) },
+                  { label: "Cust. Regs", value: String(w.customer_registrations) },
+                  { label: "Plans", value: String(w.plans) },
+                  { label: "Follow Ups", value: String(w.follow_ups) },
+                  { label: "Registrations", value: String(w.business_registrations) },
+                ]}
+              />
+            ))}
+          </div>
+
+          <div className="hidden overflow-x-auto rounded-xl border border-black/10 sm:block dark:border-white/10">
             <table className="w-full text-sm">
               <thead className="bg-black/5 text-left dark:bg-white/5">
                 <tr>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ScoreRing } from "@/components/ScoreRing";
 import { TierBadge, TIER_TEXT_COLOR } from "@/components/TierBadge";
+import { LogRowCard } from "@/components/LogRowCard";
 import { formatMonthLabel } from "@/lib/finance/month";
 import { currentWeekKey, mondayDateString, monthOfWeek, weekKeyFromDateString, weekLabel } from "@/lib/business/week";
 import { currentDayKey, dayLabel } from "@/lib/health/day";
@@ -462,7 +463,25 @@ export function HealthDashboard({
       {sortedDays.length > 0 && (
         <section className="mb-8">
           <h2 className="mb-3 text-lg font-semibold">Daily log</h2>
-          <div className="overflow-x-auto rounded-xl border border-black/10 dark:border-white/10">
+
+          {/* Below sm: six columns doesn't fit a phone screen without horizontal scrolling. */}
+          <div className="divide-y divide-black/10 rounded-xl border border-black/10 dark:divide-white/10 dark:border-white/10 sm:hidden">
+            {sortedDays.map((d) => (
+              <LogRowCard
+                key={d.date}
+                title={dayLabel(d.date)}
+                onEdit={() => loadDayIntoForm(d.date)}
+                stats={[
+                  { label: "Steps", value: String(d.steps ?? "—") },
+                  { label: "Protein", value: String(d.protein_g ?? "—") },
+                  { label: "Calories", value: String(d.calories ?? "—") },
+                  { label: "Weight", value: String(d.weight_lbs ?? "—") },
+                ]}
+              />
+            ))}
+          </div>
+
+          <div className="hidden overflow-x-auto rounded-xl border border-black/10 sm:block dark:border-white/10">
             <table className="w-full text-sm">
               <thead className="bg-black/5 text-left dark:bg-white/5">
                 <tr>
@@ -498,7 +517,23 @@ export function HealthDashboard({
       {sortedWeeks.length > 0 && (
         <section className="mb-8">
           <h2 className="mb-3 text-lg font-semibold">Workout log</h2>
-          <div className="overflow-x-auto rounded-xl border border-black/10 dark:border-white/10">
+
+          {/* Below sm: the week label is long enough that four columns still won't fit. */}
+          <div className="divide-y divide-black/10 rounded-xl border border-black/10 dark:divide-white/10 dark:border-white/10 sm:hidden">
+            {sortedWeeks.map((w) => (
+              <LogRowCard
+                key={w.week}
+                title={weekLabel(w.week)}
+                onEdit={() => loadWeekIntoForm(w.week)}
+                stats={[
+                  { label: "Workouts", value: String(w.workouts) },
+                  { label: "Intensity", value: w.intensity.charAt(0).toUpperCase() + w.intensity.slice(1) },
+                ]}
+              />
+            ))}
+          </div>
+
+          <div className="hidden overflow-x-auto rounded-xl border border-black/10 sm:block dark:border-white/10">
             <table className="w-full text-sm">
               <thead className="bg-black/5 text-left dark:bg-white/5">
                 <tr>
