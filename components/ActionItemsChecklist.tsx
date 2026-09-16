@@ -81,14 +81,16 @@ export function ActionItemsChecklist({
         <ul className="mb-4 divide-y divide-black/10 rounded-xl border border-black/10 dark:divide-white/10 dark:border-white/10">
           {items.map((item) => (
             <li key={item.id} className="flex items-center gap-3 px-4 py-2.5 text-sm">
-              <input
-                type="checkbox"
-                checked={item.done}
-                disabled={togglingId === item.id}
-                onChange={() => toggleDone(item)}
-                className="h-4 w-4"
-              />
-              <span className={`flex-1 ${item.done ? "text-black/40 line-through dark:text-white/40" : ""}`}>{item.description}</span>
+              <label className="flex flex-1 items-center gap-3 py-1.5 -my-1.5 min-h-11 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={item.done}
+                  disabled={togglingId === item.id}
+                  onChange={() => toggleDone(item)}
+                  className="h-5 w-5 shrink-0"
+                />
+                <span className={`flex-1 ${item.done ? "text-black/40 line-through dark:text-white/40" : ""}`}>{item.description}</span>
+              </label>
               <button
                 type="button"
                 onClick={() => remove(item)}

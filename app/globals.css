@@ -23,4 +23,20 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  /* Keep content clear of the notch/Dynamic Island and home-indicator bar when
+     installed as a home-screen app (viewport-fit=cover lets the page draw edge-to-edge). */
+  padding-top: env(safe-area-inset-top);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+}
+
+/* iOS Safari zooms the page in on focus for any input under 16px — our text-sm inputs are
+   14px, so bump the minimum on small screens without changing the desktop appearance. */
+@media (max-width: 640px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
 }
