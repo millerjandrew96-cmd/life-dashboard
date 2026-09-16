@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { TierBadge, TIER_TEXT_COLOR } from "@/components/TierBadge";
 import { ActionItemsChecklist } from "@/components/ActionItemsChecklist";
+import { PageHeader } from "@/components/PageHeader";
 import { addMonths, formatMonthLabel } from "@/lib/finance/month";
 import type { RelationshipChatParseResult } from "@/lib/relationships/parseChat";
 import type { RelationshipActionItem, RelationshipEntry, RelationshipScore } from "@/lib/relationships/types";
@@ -146,13 +147,7 @@ export function RelationshipsDashboard({
 
   return (
     <div className="mx-auto w-full max-w-4xl flex-1 px-6 py-10">
-      <Link href="/" className="mb-6 inline-block text-sm text-black/50 hover:text-black/80 dark:text-white/50 dark:hover:text-white/80">
-        ← Home
-      </Link>
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold">Relationships</h1>
-        <p className="text-sm text-black/60 dark:text-white/60">{formatMonthLabel(selectedMonth)}</p>
-      </div>
+      <PageHeader title="Relationships" subtitle={formatMonthLabel(selectedMonth)} />
 
       {score ? (
         <>

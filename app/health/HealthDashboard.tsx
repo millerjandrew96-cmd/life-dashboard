@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ScoreRing } from "@/components/ScoreRing";
 import { TierBadge, TIER_TEXT_COLOR } from "@/components/TierBadge";
 import { LogRowCard } from "@/components/LogRowCard";
+import { PageHeader } from "@/components/PageHeader";
 import { formatMonthLabel } from "@/lib/finance/month";
 import { currentWeekKey, mondayDateString, monthOfWeek, weekKeyFromDateString, weekLabel } from "@/lib/business/week";
 import { currentDayKey, dayLabel } from "@/lib/health/day";
@@ -189,13 +190,7 @@ export function HealthDashboard({
 
   return (
     <div className="mx-auto w-full max-w-4xl flex-1 px-6 py-10">
-      <Link href="/" className="mb-6 inline-block text-sm text-black/50 hover:text-black/80 dark:text-white/50 dark:hover:text-white/80">
-        ← Home
-      </Link>
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold">Health</h1>
-        <p className="text-sm text-black/60 dark:text-white/60">{formatMonthLabel(selectedMonth)}</p>
-      </div>
+      <PageHeader title="Health" subtitle={formatMonthLabel(selectedMonth)} />
 
       {score ? (
         <>

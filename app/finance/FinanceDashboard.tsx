@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ScoreRing } from "@/components/ScoreRing";
 import { TierBadge, TIER_TEXT_COLOR } from "@/components/TierBadge";
+import { PageHeader } from "@/components/PageHeader";
 import { formatMonthLabel } from "@/lib/finance/month";
 import type { ChatParseField, ChatParseResult } from "@/lib/finance/parseChat";
 import { computeFinanceScore } from "@/lib/finance/scoring";
@@ -147,19 +148,14 @@ export function FinanceDashboard({
 
   return (
     <div className="mx-auto w-full max-w-4xl flex-1 px-6 py-10">
-      <Link href="/" className="mb-6 inline-block text-sm text-black/50 hover:text-black/80 dark:text-white/50 dark:hover:text-white/80">
-        ← Home
-      </Link>
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Finance</h1>
-          <p className="text-sm text-black/60 dark:text-white/60">{formatMonthLabel(selectedMonth)}</p>
-        </div>
-        {score && <ScoreRing score={score.totalScore} />}
-      </div>
+      <PageHeader title="Finance" subtitle={formatMonthLabel(selectedMonth)} />
 
       {score ? (
         <>
+          <section className="mb-8 flex items-center gap-5">
+            <ScoreRing score={score.totalScore} />
+          </section>
+
           <section className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
             <StatCard label="Net worth" value={money(score.netWorth)} sub="savings + retirement − debts" />
             <StatCard label="Retirement" value={money(score.retirementBalance)} sub="display only, not scored" />
