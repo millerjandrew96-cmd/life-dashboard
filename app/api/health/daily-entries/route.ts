@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { listHealthDailyEntries, upsertHealthDailyEntry } from "@/lib/health/store";
 import { parseHealthDailyEntryInput, ValidationError } from "@/lib/health/validate";
+import { requireWriteSecret } from "@/lib/requireWriteSecret";
 
 export async function GET() {
   const entries = await listHealthDailyEntries();
@@ -8,6 +9,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const denied = requireWriteSecret(request);
+  if (denied) return denied;
   let body: unknown;
   try {
     body = await request.json();

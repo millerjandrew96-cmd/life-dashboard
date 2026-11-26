@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { parseRelationshipsChat } from "@/lib/relationships/parseChat";
+import { requireWriteSecret } from "@/lib/requireWriteSecret";
 
 export async function POST(request: Request) {
+  const denied = requireWriteSecret(request);
+  if (denied) return denied;
   let body: unknown;
   try {
     body = await request.json();

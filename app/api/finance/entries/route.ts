@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { listFinanceEntries, upsertFinanceEntry } from "@/lib/finance/store";
 import { parseFinanceEntryInput, ValidationError } from "@/lib/finance/validate";
+import { requireWriteSecret } from "@/lib/requireWriteSecret";
 
 export async function GET() {
   const entries = await listFinanceEntries();
@@ -8,6 +9,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const denied = requireWriteSecret(request);
+  if (denied) return denied;
   let body: unknown;
   try {
     body = await request.json();

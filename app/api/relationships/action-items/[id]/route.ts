@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { deleteRelationshipActionItem, updateRelationshipActionItem } from "@/lib/relationships/store";
+import { requireWriteSecret } from "@/lib/requireWriteSecret";
 
 export async function PATCH(request: Request, ctx: RouteContext<"/api/relationships/action-items/[id]">) {
+  const denied = requireWriteSecret(request);
+  if (denied) return denied;
   const { id } = await ctx.params;
   let body: unknown;
   try {
@@ -27,6 +30,8 @@ export async function PATCH(request: Request, ctx: RouteContext<"/api/relationsh
 }
 
 export async function DELETE(_req: Request, ctx: RouteContext<"/api/relationships/action-items/[id]">) {
+  const denied = requireWriteSecret(_req);
+  if (denied) return denied;
   const { id } = await ctx.params;
   await deleteRelationshipActionItem(id);
   return NextResponse.json({ ok: true });

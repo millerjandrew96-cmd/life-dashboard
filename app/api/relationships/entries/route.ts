@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { listRelationshipEntries, upsertRelationshipEntry } from "@/lib/relationships/store";
 import { parseRelationshipEntryInput, ValidationError } from "@/lib/relationships/validate";
+import { requireWriteSecret } from "@/lib/requireWriteSecret";
 
 export async function GET() {
   const entries = await listRelationshipEntries();
@@ -8,6 +9,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const denied = requireWriteSecret(request);
+  if (denied) return denied;
   let body: unknown;
   try {
     body = await request.json();

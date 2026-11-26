@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { deleteHealthWeekEntry, listHealthWeekEntries } from "@/lib/health/store";
+import { requireWriteSecret } from "@/lib/requireWriteSecret";
 
 export async function GET(_req: Request, ctx: RouteContext<"/api/health/week-entries/[week]">) {
   const { week } = await ctx.params;
@@ -12,6 +13,8 @@ export async function GET(_req: Request, ctx: RouteContext<"/api/health/week-ent
 }
 
 export async function DELETE(_req: Request, ctx: RouteContext<"/api/health/week-entries/[week]">) {
+  const denied = requireWriteSecret(_req);
+  if (denied) return denied;
   const { week } = await ctx.params;
   await deleteHealthWeekEntry(week);
   return NextResponse.json({ ok: true });

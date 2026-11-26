@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { deleteRelationshipEntry, getRelationshipEntry } from "@/lib/relationships/store";
+import { requireWriteSecret } from "@/lib/requireWriteSecret";
 
 export async function GET(_req: Request, ctx: RouteContext<"/api/relationships/entries/[month]">) {
   const { month } = await ctx.params;
@@ -11,6 +12,8 @@ export async function GET(_req: Request, ctx: RouteContext<"/api/relationships/e
 }
 
 export async function DELETE(_req: Request, ctx: RouteContext<"/api/relationships/entries/[month]">) {
+  const denied = requireWriteSecret(_req);
+  if (denied) return denied;
   const { month } = await ctx.params;
   await deleteRelationshipEntry(month);
   return NextResponse.json({ ok: true });
