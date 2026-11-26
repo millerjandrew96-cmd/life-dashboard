@@ -2,6 +2,7 @@ import { Tile } from "@/components/Tile";
 import { ScoreRing } from "@/components/ScoreRing";
 import { CounterRing } from "@/components/CounterRing";
 import { GradeChip } from "@/components/GradeChip";
+import { UnlockBox } from "@/components/UnlockBox";
 import { ActionItemsChecklist } from "@/components/ActionItemsChecklist";
 import { computeFinanceScore } from "@/lib/finance/scoring";
 import { listFinanceEntries } from "@/lib/finance/store";
@@ -53,7 +54,10 @@ export default async function Home() {
   return (
     <div className="mx-auto w-full max-w-5xl flex-1 px-6 py-10">
       <h1 className="mb-1 text-2xl font-bold">Life Dashboard</h1>
-      <p className="mb-8 text-sm text-black/60 dark:text-white/60">Finance, Business, Health, Relationships — one score each.</p>
+      <p className="mb-3 text-sm text-black/60 dark:text-white/60">Finance, Business, Health, Relationships — one score each.</p>
+      <div className="mb-8">
+        <UnlockBox />
+      </div>
 
       <div className="mb-5">
         <Tile title="Overall">

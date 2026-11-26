@@ -9,6 +9,7 @@ import { LogRowCard } from "@/components/LogRowCard";
 import { PageHeader } from "@/components/PageHeader";
 import { HeaderScoreBadge } from "@/components/HeaderScoreBadge";
 import { formatMonthLabel } from "@/lib/finance/month";
+import { writeFetch } from "@/lib/writeSecret";
 import { currentWeekKey, mondayDateString, monthOfWeek, weekKeyFromDateString, weekLabel } from "@/lib/business/week";
 import { currentDayKey, dayLabel } from "@/lib/health/day";
 import type { DailyField, HealthChatParseResult } from "@/lib/health/parseChat";
@@ -82,6 +83,7 @@ export function HealthDashboard({
 
   const [chatMessage, setChatMessage] = useState("");
   const [chatResult, setChatResult] = useState<HealthChatParseResult | null>(null);
+  const [chatError, setChatError] = useState<string | null>(null);
   const [chatLoading, setChatLoading] = useState(false);
 
   const sortedDays = useMemo(() => [...dailyEntries].sort((a, b) => b.date.localeCompare(a.date)), [dailyEntries]);
@@ -111,12 +113,13 @@ export function HealthDashboard({
         notes: dailyForm.notes,
         ...Object.fromEntries(DAILY_NUM_FIELDS.map((f) => [f, dailyForm[f] === "" ? null : Number(dailyForm[f])])),
       };
-      const res = await fetch("/api/health/daily-entries", {
+      const res = await writeFetch("/api/health/daily-entries", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
       if (!res.ok) {
+        if (res.status === 401) throw new Error("Unauthorized — unlock the dashboard above to save.");
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error ?? "Failed to save.");
       }
@@ -133,12 +136,13 @@ export function HealthDashboard({
     setWeekSaving(true);
     setWeekError(null);
     try {
-      const res = await fetch("/api/health/week-entries", {
+      const res = await writeFetch("/api/health/week-entries", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ week: weekForm.week, workouts: Number(weekForm.workouts) || 0, intensity: weekForm.intensity, notes: weekForm.notes }),
       });
       if (!res.ok) {
+        if (res.status === 401) throw new Error("Unauthorized — unlock the dashboard above to save.");
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error ?? "Failed to save.");
       }
@@ -153,12 +157,20 @@ export function HealthDashboard({
   async function handleParseChat() {
     if (!chatMessage.trim()) return;
     setChatLoading(true);
+    setChatError(null);
     try {
-      const res = await fetch("/api/health/chat", {
+      const res = await writeFetch("/api/health/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: chatMessage }),
       });
+      if (!res.ok) {
+        setChatError(
+          res.status === 401 ? "Unauthorized — unlock the dashboard above to use chat logging." : "Failed to parse.",
+        );
+        setChatResult(null);
+        return;
+      }
       setChatResult((await res.json()) as HealthChatParseResult);
     } finally {
       setChatLoading(false);
@@ -326,6 +338,7 @@ export function HealthDashboard({
             {chatLoading ? "Parsing…" : "Parse"}
           </button>
         </div>
+        {chatError && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{chatError}</p>}
         {chatResult && (
           <div className="mt-3 rounded-lg border border-black/10 p-3 text-sm dark:border-white/10">
             {chatResult.empty ? (

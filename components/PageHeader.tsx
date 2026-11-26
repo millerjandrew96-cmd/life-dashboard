@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { UnlockBox } from "@/components/UnlockBox";
 
 // Pinned to the top of the page so "← Home" stays reachable without scrolling back up —
 // especially useful once the app is installed to a phone home screen and there's no
@@ -17,7 +18,7 @@ export function PageHeader({
   badge?: ReactNode;
 }) {
   return (
-    <div className="sticky top-0 z-10 -mx-6 mb-8 flex items-center justify-between gap-3 border-b border-black/10 bg-background px-6 pt-3 pb-3 shadow-[0_6px_12px_-10px_rgba(0,0,0,0.35)] dark:border-white/10">
+    <div className="sticky top-0 z-10 -mx-6 mb-8 flex flex-wrap items-center justify-between gap-3 border-b border-black/10 bg-background px-6 pt-3 pb-3 shadow-[0_6px_12px_-10px_rgba(0,0,0,0.35)] dark:border-white/10">
       <div className="min-w-0">
         <Link
           href="/"
@@ -28,7 +29,10 @@ export function PageHeader({
         <h1 className="text-2xl font-bold">{title}</h1>
         <p className="text-sm text-black/60 dark:text-white/60">{subtitle}</p>
       </div>
-      {badge}
+      <div className="flex shrink-0 items-center gap-3">
+        {badge}
+        <UnlockBox />
+      </div>
     </div>
   );
 }

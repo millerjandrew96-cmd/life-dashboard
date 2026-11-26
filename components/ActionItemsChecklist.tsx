@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatMonthLabel } from "@/lib/finance/month";
+import { writeFetch } from "@/lib/writeSecret";
 import type { RelationshipActionItem } from "@/lib/relationships/types";
 
 /**
@@ -37,12 +38,13 @@ export function ActionItemsChecklist({
     setItemSaving(true);
     setItemError(null);
     try {
-      const res = await fetch("/api/relationships/action-items", {
+      const res = await writeFetch("/api/relationships/action-items", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ description: newItemDescription, due_month: newItemDueMonth, done: false }),
       });
       if (!res.ok) {
+        if (res.status === 401) throw new Error("Unauthorized — unlock the dashboard above to save.");
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error ?? "Failed to add item.");
       }
@@ -58,11 +60,15 @@ export function ActionItemsChecklist({
   async function toggleDone(item: RelationshipActionItem) {
     setTogglingId(item.id);
     try {
-      await fetch(`/api/relationships/action-items/${item.id}`, {
+      const res = await writeFetch(`/api/relationships/action-items/${item.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ done: !item.done }),
       });
+      if (!res.ok) {
+        setItemError(res.status === 401 ? "Unauthorized — unlock the dashboard above to save." : "Failed to update item.");
+        return;
+      }
       router.refresh();
     } finally {
       setTogglingId(null);
@@ -70,7 +76,11 @@ export function ActionItemsChecklist({
   }
 
   async function remove(item: RelationshipActionItem) {
-    await fetch(`/api/relationships/action-items/${item.id}`, { method: "DELETE" });
+    const res = await writeFetch(`/api/relationships/action-items/${item.id}`, { method: "DELETE" });
+    if (!res.ok) {
+      setItemError(res.status === 401 ? "Unauthorized — unlock the dashboard above to save." : "Failed to remove item.");
+      return;
+    }
     router.refresh();
   }
 

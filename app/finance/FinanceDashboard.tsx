@@ -8,6 +8,7 @@ import { TierBadge, TIER_TEXT_COLOR } from "@/components/TierBadge";
 import { PageHeader } from "@/components/PageHeader";
 import { HeaderScoreBadge } from "@/components/HeaderScoreBadge";
 import { formatMonthLabel } from "@/lib/finance/month";
+import { writeFetch } from "@/lib/writeSecret";
 import type { ChatParseField, ChatParseResult } from "@/lib/finance/parseChat";
 import { computeFinanceScore } from "@/lib/finance/scoring";
 import type { FinanceEntry, FinanceScore } from "@/lib/finance/types";
@@ -82,6 +83,7 @@ export function FinanceDashboard({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [chatMessage, setChatMessage] = useState("");
   const [chatResult, setChatResult] = useState<ChatParseResult | null>(null);
+  const [chatError, setChatError] = useState<string | null>(null);
   const [chatLoading, setChatLoading] = useState(false);
 
   const sortedEntries = useMemo(() => [...entries].sort((a, b) => b.month.localeCompare(a.month)), [entries]);
@@ -100,12 +102,13 @@ export function FinanceDashboard({
         notes: form.notes,
         ...Object.fromEntries(NUMERIC_FIELDS.map((f) => [f, Number(form[f]) || 0])),
       };
-      const res = await fetch("/api/finance/entries", {
+      const res = await writeFetch("/api/finance/entries", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
       if (!res.ok) {
+        if (res.status === 401) throw new Error("Unauthorized — unlock the dashboard above to save.");
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error ?? "Failed to save.");
       }
@@ -121,12 +124,20 @@ export function FinanceDashboard({
   async function handleParseChat() {
     if (!chatMessage.trim()) return;
     setChatLoading(true);
+    setChatError(null);
     try {
-      const res = await fetch("/api/finance/chat", {
+      const res = await writeFetch("/api/finance/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: chatMessage }),
       });
+      if (!res.ok) {
+        setChatError(
+          res.status === 401 ? "Unauthorized — unlock the dashboard above to use chat logging." : "Failed to parse.",
+        );
+        setChatResult(null);
+        return;
+      }
       const result = (await res.json()) as ChatParseResult;
       setChatResult(result);
     } finally {
@@ -275,6 +286,7 @@ export function FinanceDashboard({
             {chatLoading ? "Parsing…" : "Parse"}
           </button>
         </div>
+        {chatError && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{chatError}</p>}
         {chatResult && (
           <div className="mt-3 rounded-lg border border-black/10 p-3 text-sm dark:border-white/10">
             {chatResult.empty ? (

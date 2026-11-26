@@ -8,6 +8,7 @@ import { ActionItemsChecklist } from "@/components/ActionItemsChecklist";
 import { PageHeader } from "@/components/PageHeader";
 import { HeaderScoreBadge } from "@/components/HeaderScoreBadge";
 import { addMonths, formatMonthLabel } from "@/lib/finance/month";
+import { writeFetch } from "@/lib/writeSecret";
 import { gradeColor } from "@/lib/grade";
 import type { RelationshipChatParseResult } from "@/lib/relationships/parseChat";
 import type { RelationshipActionItem, RelationshipEntry, RelationshipScore } from "@/lib/relationships/types";
@@ -56,6 +57,7 @@ export function RelationshipsDashboard({
 
   const [chatMessage, setChatMessage] = useState("");
   const [chatResult, setChatResult] = useState<RelationshipChatParseResult | null>(null);
+  const [chatError, setChatError] = useState<string | null>(null);
   const [chatLoading, setChatLoading] = useState(false);
   const [addingChatItem, setAddingChatItem] = useState(false);
 
@@ -72,7 +74,7 @@ export function RelationshipsDashboard({
     setEvalSaving(true);
     setEvalError(null);
     try {
-      const res = await fetch("/api/relationships/entries", {
+      const res = await writeFetch("/api/relationships/entries", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -87,6 +89,7 @@ export function RelationshipsDashboard({
         }),
       });
       if (!res.ok) {
+        if (res.status === 401) throw new Error("Unauthorized — unlock the dashboard above to save.");
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error ?? "Failed to save.");
       }
@@ -102,12 +105,20 @@ export function RelationshipsDashboard({
   async function handleParseChat() {
     if (!chatMessage.trim()) return;
     setChatLoading(true);
+    setChatError(null);
     try {
-      const res = await fetch("/api/relationships/chat", {
+      const res = await writeFetch("/api/relationships/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: chatMessage }),
       });
+      if (!res.ok) {
+        setChatError(
+          res.status === 401 ? "Unauthorized — unlock the dashboard above to use chat logging." : "Failed to parse.",
+        );
+        setChatResult(null);
+        return;
+      }
       setChatResult((await res.json()) as RelationshipChatParseResult);
     } finally {
       setChatLoading(false);
@@ -128,11 +139,13 @@ export function RelationshipsDashboard({
     if (!chatResult?.newActionItem) return;
     setAddingChatItem(true);
     try {
-      await fetch("/api/relationships/action-items", {
+      const res = await writeFetch("/api/relationships/action-items", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ description: chatResult.newActionItem, due_month: addMonths(selectedMonth, 1), done: false }),
       });
+      // Keep the item visible on failure so it can be retried after unlocking.
+      if (!res.ok) return;
       setChatResult((r) => (r ? { ...r, newActionItem: null } : r));
       router.refresh();
     } finally {
@@ -270,6 +283,7 @@ export function RelationshipsDashboard({
             {chatLoading ? "Parsing…" : "Parse"}
           </button>
         </div>
+        {chatError && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{chatError}</p>}
         {chatResult && (
           <div className="mt-3 rounded-lg border border-black/10 p-3 text-sm dark:border-white/10">
             {chatResult.empty ? (
